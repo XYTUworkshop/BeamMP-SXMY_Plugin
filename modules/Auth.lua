@@ -183,6 +183,15 @@ function SXMY_Auth_ShowInfo()
     end
 end
 
+-- Get the logged-in nickname of a player, or nil if not logged in (used by NameTag) / 获取玩家的登录昵称，未登录返回 nil（供 NameTag 使用）
+function SXMY_Auth_GetNick(player_id)
+    local st = players[player_id]
+    if st and st.loggedIn then
+        return st.nick
+    end
+    return nil
+end
+
 -- Split a string into whitespace-separated arguments / 将字符串按空白拆分为参数
 local function splitArgs(str)
     local args = {}

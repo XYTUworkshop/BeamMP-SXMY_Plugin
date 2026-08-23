@@ -11,6 +11,8 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
 - **身份认证（Auth）**：`/reg` 注册、`/login` 登录，密码 SHA-256 哈希存储；未登录玩家聊天不可见、不可刷车；密码规则（长度/大小写/特殊符号）可配置
   Auth: `/reg` register, `/login` login, SHA-256 password hashing; unauthenticated players cannot chat or spawn vehicles; password rules configurable
+- **聊天昵称（NameTag）**：未启用 Auth 时玩家用 `/n 名字` 设置聊天昵称，消息带 `[昵称]` 前缀；启用 Auth 时自动使用登录账号昵称
+  NameTag: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically
 - **中英日志切换**：`[General] language` 可设置 `zh` 或 `en`，插件控制台日志只输出所选语言
 - **服务器信息日志（loginfo）**：启动时输出服务器启动时间、服务器版本、服务器地图，每项可单独开关
 
@@ -25,6 +27,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 └── modules/             # 功能模块目录（子文件夹，不会被自动加载，由 main.lua require 加载）
     ├── lib.lua          # 共享配置解析库（配置解析、语言切换、模块发现）
     ├── Auth.lua         # 身份认证功能（注册/登录/拦截）
+    ├── NameTag.lua      # 聊天昵称功能
     ├── WelcomeMsg.lua   # 进服信息功能
     └── loginfo.lua      # 服务器信息日志功能
 ```
@@ -63,6 +66,10 @@ enable = true          # 身份认证功能开关 / Auth module switch
 passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
 passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
 passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
+LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
+
+[NameTag]
+enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
 
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
@@ -85,6 +92,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdcase` | 是否要求密码同时包含大小写字母 |
 | `[Auth].passwdsymbol` | 是否要求密码包含特殊符号 |
 | `[Auth].LoginMsg` | 登录成功广播消息（`/say`），`<name>` 替换为玩家昵称，留空则不发送 |
+| `[NameTag].enable` | 启用/禁用聊天昵称功能 |
 | `[WelcomeMsg].enable` | 启用/禁用进服信息功能 |
 | `[WelcomeMsg].delay` | 发送延迟（秒），等待玩家同步完成，默认 12 |
 | `[WelcomeMsg].showtest` | 启动时显示欢迎文本测试（在插件与 loginfo 输出后） |
@@ -118,6 +126,7 @@ enable = true
 |---|---|
 | `/reg 昵称 密码 确认密码` | 注册并登录 / Register and log in |
 | `/login 昵称 密码` | 登录 / Log in |
+| `/n 昵称` | 设置聊天昵称（仅未启用 Auth 时）/ Set the chat nickname (only when Auth is disabled) |
 
 - 未登录玩家：聊天消息他人不可见，**不可刷载具**（含编辑/替换车辆）；每 5 秒私信提示注册/登录；登录失败 5 次锁定 60 秒
   Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.

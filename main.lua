@@ -50,3 +50,8 @@ end
 if type(SXMY_Auth_ShowInfo) == "function" then
     SXMY_Auth_ShowInfo()
 end
+
+-- NameTag startup info (if the module is loaded, printed once) / NameTag 启动信息（若已加载，仅一次）
+if type(SXMY_NameTag_ShowInfo) == "function" then
+    SXMY_NameTag_ShowInfo()
+end

@@ -8,6 +8,9 @@ passwdcase = false     # 是否要求大小写混合（不要求也可使用）/
 passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
 LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
 
+[NameTag]
+enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
+
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 10         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync

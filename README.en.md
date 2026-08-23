@@ -10,6 +10,7 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 - **Auto-discovered modules**: the module list is read automatically from `config.toml`, no code changes needed to add features.
 - **Welcome message (WelcomeMsg)**: sends the configured welcome text to a player on join via private message, supports any language, `\n` splits into multiple messages.
 - **Auth**: `/reg` register, `/login` login, SHA-256 password hashing; unauthenticated players cannot chat or spawn vehicles; password rules configurable.
+- **NameTag**: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
 - **Server info log (loginfo)**: outputs server start time, server version and server map on startup, each line can be toggled separately.
 
@@ -24,6 +25,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 └── modules/             # Module directory (subfolder, not auto-loaded; loaded via require in main.lua)
     ├── lib.lua          # Shared config library (parsing, language, discovery)
     ├── Auth.lua         # Auth feature (register/login/blocking)
+    ├── NameTag.lua      # Chat nickname feature
     ├── WelcomeMsg.lua   # Welcome message feature
     └── loginfo.lua      # Server info log feature
 ```
@@ -62,6 +64,10 @@ enable = true          # 身份认证功能开关 / Auth module switch
 passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
 passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
 passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
+LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
+
+[NameTag]
+enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
 
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
@@ -84,6 +90,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdcase` | Require both uppercase and lowercase letters in the password |
 | `[Auth].passwdsymbol` | Require a special character in the password |
 | `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced with the nickname, empty disables it |
+| `[NameTag].enable` | Enable/disable the chat nickname feature |
 | `[WelcomeMsg].enable` | Enable/disable the welcome message feature |
 | `[WelcomeMsg].delay` | Send delay in seconds, waits for the player to sync, default 12 |
 | `[WelcomeMsg].showtest` | Show the welcome text test on startup (after plugin and loginfo output) |
@@ -115,6 +122,7 @@ Type in the in-game chat:
 |---|---|
 | `/reg nickname password confirmpassword` | Register and log in |
 | `/login nickname password` | Log in |
+| `/n nickname` | Set the chat nickname (only when Auth is disabled) |
 
 - Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.
 - Logged in: messages starting with `/` are hidden from others (commands are not broadcast).
