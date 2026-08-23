@@ -10,9 +10,7 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **自动发现模块**：模块列表自动从 `config.toml` 读取，新增功能无需修改任何代码
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
 - **身份认证（Auth）**：`/reg` 注册、`/login` 登录，密码 SHA-256 哈希存储；未登录玩家聊天不可见、不可刷车；密码规则（长度/大小写/特殊符号）可配置
-  Auth: `/reg` register, `/login` login, SHA-256 password hashing; unauthenticated players cannot chat or spawn vehicles; password rules configurable
 - **聊天昵称（NameTag）**：未启用 Auth 时玩家用 `/n 名字` 设置聊天昵称，消息带 `[昵称]` 前缀；启用 Auth 时自动使用登录账号昵称
-  NameTag: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically
 - **中英日志切换**：`[General] language` 可设置 `zh` 或 `en`，插件控制台日志只输出所选语言
 - **服务器信息日志（loginfo）**：启动时输出服务器启动时间、服务器版本、服务器地图，每项可单独开关
 
@@ -51,7 +49,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [时间] [LUA] [SXMY_WelcomeMsg] 欢迎来到SXMY
 ```
 
-（`已加载X/Y个功能`：X 为成功加载数，Y 为配置中启用的模块数；`showtest` 启动测试文本仅输出一次）/ (`Loaded X/Y features`: X = loaded, Y = enabled in config; the `showtest` startup test text prints only once)
+（`已加载X/Y个功能`：X 为成功加载数，Y 为配置中启用的模块数；`showtest` 启动测试文本仅输出一次）
 
 ## 配置说明
 
@@ -120,30 +118,24 @@ enable = true
 
 ## 命令说明（Auth）
 
-在游戏内聊天框输入 / Type in the in-game chat:
+在游戏内聊天框输入：
 
-| 命令 / Command | 说明 / Description |
+| 命令 | 说明 |
 |---|---|
-| `/reg 昵称 密码 确认密码` | 注册并登录 / Register and log in |
-| `/login 昵称 密码` | 登录 / Log in |
-| `/n 昵称` | 设置聊天昵称（仅未启用 Auth 时）/ Set the chat nickname (only when Auth is disabled) |
+| `/reg 昵称 密码 确认密码` | 注册并登录 |
+| `/login 昵称 密码` | 登录 |
+| `/n 昵称` | 设置聊天昵称（仅未启用 Auth 时） |
 
 - 未登录玩家：聊天消息他人不可见，**不可刷载具**（含编辑/替换车辆）；每 5 秒私信提示注册/登录；登录失败 5 次锁定 60 秒
-  Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.
 - 已登录玩家：`/` 开头的消息他人不可见（命令不广播）
-  Logged in: messages starting with `/` are hidden from others (commands are not broadcast).
-- 账户保存于插件根目录 `users.txt`，密码为 SHA-256 哈希 / Accounts stored in `users.txt`, passwords as SHA-256 hashes.
+- 账户保存于插件根目录 `users.txt`，密码为 SHA-256 哈希
 
-## 安全注意事项 / Security Notes
+## 安全注意事项
 
 - 密码通过聊天输入，`ServerConfig.toml` 中 `LogChat = true` 时服务器控制台/日志会记录聊天内容（含密码），建议仅管理员可见服务器控制台
-  Passwords are typed in chat; with `LogChat = true` the server console/log records chat (including passwords) — keep the console admin-only.
 - 密码以加盐 SHA-256 存储（`盐$哈希` 格式），兼容旧版无盐账户；生产环境仍建议升级为慢哈希（如 bcrypt）
-  Passwords stored as salted SHA-256 (`salt$hash`), legacy unsalted accounts still work; for production consider a slow hash (e.g. bcrypt).
-- 已内置登录失败锁定（连续 5 次/锁定 60 秒），按玩家 IP 追踪，重连更换服务器 ID 无法绕过
-  Built-in brute-force protection: lockout after 5 consecutive failed logins (60 seconds), tracked by player IP, not bypassable by reconnecting with a new server ID.
+- 已内置登录失败锁定（连续 5 次/锁定 60 秒），优先按玩家 IP 追踪，重连更换服务器 ID 无法绕过
 - 昵称仅允许字母、数字、下划线，防止破坏账户文件格式
-  Nicknames are limited to letters, digits and underscores to keep the accounts file format safe.
 
 ## 常见问题
 

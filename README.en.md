@@ -132,7 +132,7 @@ Type in the in-game chat:
 
 - Passwords are typed in chat; with `LogChat = true` the server console/log records chat (including passwords) — keep the console admin-only.
 - Passwords stored as salted SHA-256 (`salt$hash`), legacy unsalted accounts still work; for production consider a slow hash (e.g. bcrypt).
-- Built-in brute-force protection: lockout after 5 consecutive failed logins (60 seconds), tracked by player IP, not bypassable by reconnecting with a new server ID.
+- Built-in brute-force protection: lockout after 5 consecutive failed logins (60 seconds), tracked by player IP when available, not bypassable by reconnecting with a new server ID.
 - Nicknames are limited to letters, digits and underscores to keep the accounts file format safe.
 
 Inside a module, use `lib = require("modules.lib")` for config access (`lib.getConfig()`, `lib.enabled(section)`, `lib.get(section, key, default)`, `lib.msg(zhText, enText)`). To run logic after the main summary, register the `onInit` event. Prefix event handlers with `SXMY_ModuleName_EventName` to avoid collisions.
