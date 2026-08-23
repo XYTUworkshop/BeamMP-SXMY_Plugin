@@ -11,6 +11,7 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 - **Welcome message (WelcomeMsg)**: sends the configured welcome text to a player on join via private message, supports any language, `\n` splits into multiple messages.
 - **Auth**: `/reg` register, `/login` login, SHA-256 password hashing; unauthenticated players cannot chat or spawn vehicles; password rules configurable.
 - **NameTag**: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically.
+- **VehicleTag**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMYVehicleTag` client mod.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
 - **Server info log (loginfo)**: outputs server start time, server version and server map on startup, each line can be toggled separately.
 
@@ -26,14 +27,17 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── lib.lua          # Shared config library (parsing, language, discovery)
     ├── Auth.lua         # Auth feature (register/login/blocking)
     ├── NameTag.lua      # Chat nickname feature
+    ├── VehicleTag.lua   # Vehicle tag feature (requires the client mod)
     ├── WelcomeMsg.lua   # Welcome message feature
     └── loginfo.lua      # Server info log feature
 ```
 
 ## Installation
 
-1. Copy the `BeamMP-SXMY_Plugin` folder into your server's `Resources/Server/` directory.
-2. (Optional) Adjust the language and feature switches in `config.toml`.
+1. Extract the release archive `BeamMP-SXMY_Plugin.zip`, then extract the `server` and `client` folders into the BeamMP server's `Resources` folder:
+   - `server` → `Resources/Server` (contains the plugin folder `BeamMP-SXMY_Plugin`)
+   - `client` → `Resources/Client` (contains the vehicle-tag client mod `SXMY-client.zip`, auto-downloaded by players on join)
+2. (Optional) Adjust the language and feature switches in `Resources/Server/BeamMP-SXMY_Plugin/config.toml`.
 3. Start/restart the server; the console prints the plugin loading status, example output (`[LUA]` is the BeamMP built-in prefix):
 
 ```
@@ -69,6 +73,9 @@ LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say）
 [NameTag]
 enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
 
+[VehicleTag]
+enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMYVehicleTag mod）/ Vehicle tag module switch (requires the SXMYVehicleTag client mod)
+
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
@@ -91,6 +98,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdsymbol` | Require a special character in the password |
 | `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced with the nickname, empty disables it |
 | `[NameTag].enable` | Enable/disable the chat nickname feature |
+| `[VehicleTag].enable` | Enable/disable the vehicle tag feature (requires `Resources/Client/SXMYVehicleTag.zip`) |
 | `[WelcomeMsg].enable` | Enable/disable the welcome message feature |
 | `[WelcomeMsg].delay` | Send delay in seconds, waits for the player to sync, default 12 |
 | `[WelcomeMsg].showtest` | Show the welcome text test on startup (after plugin and loginfo output) |

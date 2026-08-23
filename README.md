@@ -11,6 +11,7 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
 - **身份认证（Auth）**：`/reg` 注册、`/login` 登录，密码 SHA-256 哈希存储；未登录玩家聊天不可见、不可刷车；密码规则（长度/大小写/特殊符号）可配置
 - **聊天昵称（NameTag）**：未启用 Auth 时玩家用 `/n 名字` 设置聊天昵称，消息带 `[昵称]` 前缀；启用 Auth 时自动使用登录账号昵称
+- **车辆标签（VehicleTag）**：玩家登录或设置 `/n` 昵称后，其所有车辆上方（含玩家自己的车）显示昵称标签，并隐藏 BeamMP 官方标签；需要随服务器下发的 `SXMYVehicleTag` 客户端 mod
 - **中英日志切换**：`[General] language` 可设置 `zh` 或 `en`，插件控制台日志只输出所选语言
 - **服务器信息日志（loginfo）**：启动时输出服务器启动时间、服务器版本、服务器地图，每项可单独开关
 
@@ -26,14 +27,17 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── lib.lua          # 共享配置解析库（配置解析、语言切换、模块发现）
     ├── Auth.lua         # 身份认证功能（注册/登录/拦截）
     ├── NameTag.lua      # 聊天昵称功能
+    ├── VehicleTag.lua   # 车辆标签功能（需客户端 mod）
     ├── WelcomeMsg.lua   # 进服信息功能
     └── loginfo.lua      # 服务器信息日志功能
 ```
 
 ## 安装方法
 
-1. 将 `BeamMP-SXMY_Plugin` 文件夹复制到服务器的 `Resources/Server/` 目录下
-2. （可选）修改 `config.toml` 中的语言与功能开关
+1. 解压发布包 `BeamMP-SXMY_Plugin.zip`，将其中 `server` 与 `client` 两个文件夹解压进 BeamMP 服务器的 `Resources` 文件夹：
+   - `server` → `Resources/Server`（内含插件文件夹 `BeamMP-SXMY_Plugin`）
+   - `client` → `Resources/Client`（内含车辆标签客户端 mod `SXMY-client.zip`，玩家进服时自动下载）
+2. （可选）修改 `Resources/Server/BeamMP-SXMY_Plugin/config.toml` 中的语言与功能开关
 3. 启动/重启服务器，控制台会打印插件加载状态，示例输出如下（`[LUA]` 为 BeamMP 自带前缀）：
 
 ```
@@ -91,6 +95,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdsymbol` | 是否要求密码包含特殊符号 |
 | `[Auth].LoginMsg` | 登录成功广播消息（`/say`），`<name>` 替换为玩家昵称，留空则不发送 |
 | `[NameTag].enable` | 启用/禁用聊天昵称功能 |
+| `[VehicleTag].enable` | 启用/禁用车辆标签功能（需 `Resources/Client/SXMYVehicleTag.zip`） |
 | `[WelcomeMsg].enable` | 启用/禁用进服信息功能 |
 | `[WelcomeMsg].delay` | 发送延迟（秒），等待玩家同步完成，默认 12 |
 | `[WelcomeMsg].showtest` | 启动时显示欢迎文本测试（在插件与 loginfo 输出后） |
