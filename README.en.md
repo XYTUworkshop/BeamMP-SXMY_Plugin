@@ -2,8 +2,7 @@
 
 A modular server plugin for the SXMY server: `main.lua` main loader + auto-discovered modules + Chinese/English log switching. Built for **BeamMP-Server v3.x** (Lua 5.3).
 
-> Note: This is the English README, the Chinese version is at [README.md](README.md).
-> 说明：本文件为英文版 README，中文版见 [README.md](README.md)。
+> Note: The Chinese version is at [README.md](README.md).
 
 ## Features
 
@@ -30,16 +29,18 @@ Resources/Server/BeamMP-SXMY_Plugin/
 1. Copy the `BeamMP-SXMY_Plugin` folder into your server's `Resources/Server/` directory.
 2. (Optional) Adjust the language and feature switches in `config.toml`.
 3. Start/restart the server; the console prints the plugin loading status, example output (`[LUA]` is the BeamMP built-in prefix):
-   ```
-   [time] [LUA] [SXMY_Plugin] Plugin loaded
-   [time] [LUA] [SXMY_Plugin] Loaded 1/1 features
-   [time] [LUA] [SXMY_Plugin] Loaded features:
-   [time] [LUA] [SXMY_Plugin] 1. loginfo
-   [time] [LUA] [SXMY_Loginfo] Server start time: 2026.08.18-14.30.00
-   [time] [LUA] [SXMY_Loginfo] Server version: 3.1.0
-   [time] [LUA] [SXMY_Loginfo] Server map: gridmap
-   ```
-   (`Loaded X/Y features`: X = loaded, Y = enabled in config; loginfo prints after the main summary via the `onInit` event)
+
+```
+[time] [LUA] [SXMY_Plugin] Plugin loaded
+[time] [LUA] [SXMY_Plugin] Loaded 1/1 features
+[time] [LUA] [SXMY_Plugin] Loaded features:
+[time] [LUA] [SXMY_Plugin] 1. loginfo
+[time] [LUA] [SXMY_Loginfo] Server start time: 2026.08.18-14.30.00
+[time] [LUA] [SXMY_Loginfo] Server version: 3.9.3
+[time] [LUA] [SXMY_Loginfo] Server map: gridmap
+```
+
+(`Loaded X/Y features`: X = loaded, Y = enabled in config; loginfo prints after the main summary via the `onInit` event)
 
 ## Configuration
 
@@ -70,11 +71,14 @@ serverMap = true       # Show server map
 
 1. Create a `.lua` file under `modules/` (subfolder files are not auto-loaded; load them with `require()`).
 2. Add a section with a switch in `config.toml`:
-   ```toml
-   [MyModule]
-   enable = true
-   ```
-   (Both `enable` and `enabled` keys are supported)
+
+```toml
+[MyModule]
+enable = true
+```
+
+(Both `enable` and `enabled` keys are supported)
+
 3. Restart the server; `main.lua` auto-discovers and loads the module, and lists it in the startup summary.
 
 Inside a module, use `lib = require("modules.lib")` for config access (`lib.getConfig()`, `lib.enabled(section)`, `lib.get(section, key, default)`, `lib.msg(zhText, enText)`). To run logic after the main summary, register the `onInit` event. Prefix event handlers with `SXMY_ModuleName_EventName` to avoid collisions.
