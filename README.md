@@ -84,6 +84,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdlen` | 密码最小长度（位），默认 8 |
 | `[Auth].passwdcase` | 是否要求密码同时包含大小写字母 |
 | `[Auth].passwdsymbol` | 是否要求密码包含特殊符号 |
+| `[Auth].LoginMsg` | 登录成功广播消息（`/say`），`<name>` 替换为玩家昵称，留空则不发送 |
 | `[WelcomeMsg].enable` | 启用/禁用进服信息功能 |
 | `[WelcomeMsg].delay` | 发送延迟（秒），等待玩家同步完成，默认 12 |
 | `[WelcomeMsg].showtest` | 启动时显示欢迎文本测试（在插件与 loginfo 输出后） |

@@ -83,6 +83,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdlen` | Minimum password length (characters), default 8 |
 | `[Auth].passwdcase` | Require both uppercase and lowercase letters in the password |
 | `[Auth].passwdsymbol` | Require a special character in the password |
+| `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced with the nickname, empty disables it |
 | `[WelcomeMsg].enable` | Enable/disable the welcome message feature |
 | `[WelcomeMsg].delay` | Send delay in seconds, waits for the player to sync, default 12 |
 | `[WelcomeMsg].showtest` | Show the welcome text test on startup (after plugin and loginfo output) |

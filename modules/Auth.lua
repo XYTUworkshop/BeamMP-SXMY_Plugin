@@ -143,6 +143,46 @@ local function notify(player_id, zhText, enText)
     MP.SendChatMessage(player_id, lib.msg(zhText, enText))
 end
 
+-- Split text into non-empty trimmed lines by \n escapes and real newlines / 按 \n 转义与真实换行将文本拆分为非空行（去除首尾空白）
+local function splitLines(text)
+    local normalized = text:gsub("\\n", "\n"):gsub("\r\n", "\n"):gsub("\r", "\n")
+    local lines = {}
+    for line in (normalized .. "\n"):gmatch("(.-)\n") do
+        local trimmed = line:gsub("^%s+", ""):gsub("%s+$", "")
+        if trimmed ~= "" then
+            lines[#lines + 1] = trimmed
+        end
+    end
+    return lines
+end
+
+-- Get the absolute path of the accounts file (falls back to the relative path) / 获取账户文件的绝对路径（失败时回退相对路径）
+local function getAccountsPath()
+    local fh = io.popen("cd")
+    if fh then
+        local cwd = fh:read("*a"):gsub("%s+$", "")
+        fh:close()
+        if cwd ~= "" then
+            return cwd .. "\\" .. ACCOUNTS_FILE:gsub("/", "\\")
+        end
+    end
+    return ACCOUNTS_FILE
+end
+
+-- Show startup info: accounts file path and login text, printed after the other modules / 显示启动信息：账户文件路径与登录文本（在其他模块之后输出）
+function SXMY_Auth_ShowInfo()
+    -- Accounts file absolute path / 账户文件绝对路径
+    print("[SXMY_Auth] " .. lib.msg("用户路径：", "Accounts path: ") .. getAccountsPath())
+    -- Login text config / 登录文本配置
+    local loginMsg = lib.get("Auth", "LoginMsg", "")
+    print("[SXMY_Auth] " .. lib.msg("登录文本：", "Login text: "))
+    if loginMsg and loginMsg ~= "" then
+        for _, line in ipairs(splitLines(loginMsg)) do
+            print("[SXMY_Auth] " .. line)
+        end
+    end
+end
+
 -- Split a string into whitespace-separated arguments / 将字符串按空白拆分为参数
 local function splitArgs(str)
     local args = {}
@@ -239,6 +279,13 @@ local function handleLogin(player_id, args)
             loginFails[lockKey] = nil
             players[player_id] = { nick = nick, loggedIn = true, joinedAt = os.time(), lastPrompt = os.time() }
             notify(player_id, "登录成功", "Logged in successfully")
+            -- Broadcast the configured login message to everyone (like /say) / 向所有人广播配置的登录消息（类似 /say）
+            local loginMsg = lib.get("Auth", "LoginMsg", "")
+            if loginMsg and loginMsg ~= "" then
+                -- gsub returns two values (string, count); take only the string to avoid a third argument / gsub 返回两个值（字符串、次数），仅取字符串避免多出第三个参数
+                local broadcast = loginMsg:gsub("<name>", nick)
+                MP.SendChatMessage(-1, broadcast)
+            end
             return
         end
     end

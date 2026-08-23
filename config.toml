@@ -6,6 +6,7 @@ enable = true          # 身份认证功能开关 / Auth module switch
 passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
 passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
 passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
+LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
 
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch

@@ -45,3 +45,8 @@ end
 if type(SXMY_WelcomeMsg_ShowTestOutput) == "function" then
     SXMY_WelcomeMsg_ShowTestOutput()
 end
+
+-- Auth startup info (if the module is loaded, printed once) / Auth 启动信息（若已加载，仅一次）
+if type(SXMY_Auth_ShowInfo) == "function" then
+    SXMY_Auth_ShowInfo()
+end
