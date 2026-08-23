@@ -1,0 +1,16 @@
+# =====================================================================================
+# BeamMP-SXMY_Plugin - Configuration File / 配置文件
+# Plugin language setting / 插件语言设置
+# NOTE: restart the server after changing this file / 注意：修改本文件后需要重启服务器
+# =====================================================================================
+
+# Plugin language / 插件日志语言: "zh" for Chinese, "en" for English / "zh" 中文, "en" 英文
+[General]
+language = "zh"
+
+# Server info log module / 服务器信息日志功能（启动时输出时间/版本/地图，前缀 SXMY_Loginfo）
+[loginfo]
+enable = true          # Module switch / 功能开关
+startTime = true       # Show server start time / 显示服务器启动时间
+serverVersion = true   # Show server version / 显示服务器版本
+serverMap = true       # Show server map (from ServerConfig.toml) / 显示服务器地图（从服务器配置文件获取）
