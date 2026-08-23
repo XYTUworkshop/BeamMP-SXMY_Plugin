@@ -48,7 +48,13 @@ local function parseConfig(path)
                         elseif val == "false" then
                             cfg[section .. "." .. key2] = false
                         else
-                            cfg[section .. "." .. key2] = val
+                            -- Try to parse numbers (e.g. delay = 12) / 尝试解析数字（如 delay = 12）
+                            local num = tonumber(val)
+                            if num then
+                                cfg[section .. "." .. key2] = num
+                            else
+                                cfg[section .. "." .. key2] = val
+                            end
                         end
                     end
                 end

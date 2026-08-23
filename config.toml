@@ -1,16 +1,14 @@
-# =====================================================================================
-# BeamMP-SXMY_Plugin - Configuration File / 配置文件
-# Plugin language setting / 插件语言设置
-# NOTE: restart the server after changing this file / 注意：修改本文件后需要重启服务器
-# =====================================================================================
-
-# Plugin language / 插件日志语言: "zh" for Chinese, "en" for English / "zh" 中文, "en" 英文
 [General]
-language = "zh"
+language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文） / Plugin log language ("zh" Chinese, "en" English)
 
-# Server info log module / 服务器信息日志功能（启动时输出时间/版本/地图，前缀 SXMY_Loginfo）
+[WelcomeMsg]
+enable = true      # 进服信息功能开关 / Welcome message module switch
+delay = 10         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
+showtest = true    # 启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)
+text = "welcome to SXMY \n Enjoy :D"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
+
 [loginfo]
-enable = true          # Module switch / 功能开关
-startTime = true       # Show server start time / 显示服务器启动时间
-serverVersion = true   # Show server version / 显示服务器版本
-serverMap = true       # Show server map (from ServerConfig.toml) / 显示服务器地图（从服务器配置文件获取）
+enable = true          # 服务器信息日志功能开关 / Server info log module switch
+startTime = true       # 显示服务器启动时间 / Show server start time
+serverVersion = true   # 显示服务器版本 / Show server version
+serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / Show server map (read from ServerConfig.toml)

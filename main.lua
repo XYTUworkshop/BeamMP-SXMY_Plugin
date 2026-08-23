@@ -28,10 +28,20 @@ for _, moduleName in ipairs(lib.getEnabledModules()) do
     end
 end
 
--- Startup summary logs / 启动汇总日志
+-- Startup summary logs, printed once / 启动汇总日志，仅输出一次
 print("[SXMY_Plugin] " .. lib.msg("插件加载完成", "Plugin loaded"))
 print("[SXMY_Plugin] " .. lib.msg("已加载%d/%d个功能", "Loaded %d/%d features"):format(loadedCount, totalCount))
 print("[SXMY_Plugin] " .. lib.msg("已加载的功能：", "Loaded features:"))
 for i, moduleName in ipairs(loadedNames) do
     print("[SXMY_Plugin] " .. i .. ". " .. moduleName)
+end
+
+-- Loginfo output (if the module is loaded, printed once) / loginfo 输出（若已加载，仅一次）
+if type(SXMY_loginfo_Startup) == "function" then
+    SXMY_loginfo_Startup()
+end
+
+-- Welcome text test output (if enabled, printed once) / 欢迎文本测试输出（若启用，仅一次）
+if type(SXMY_WelcomeMsg_ShowTestOutput) == "function" then
+    SXMY_WelcomeMsg_ShowTestOutput()
 end

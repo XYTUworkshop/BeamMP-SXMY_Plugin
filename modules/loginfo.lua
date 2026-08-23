@@ -2,7 +2,7 @@
 -- BeamMP-SXMY_Plugin - modules/loginfo.lua / 服务器信息日志模块
 -- Server info log module / 服务器信息日志功能模块
 -- Shows start time, version and map after the main summary / 在 main 汇总后显示启动时间、版本、地图
--- Runs on the onInit event, so it appears after the main plugin summary / 通过 onInit 事件运行，输出在 main 汇总之后
+-- Called by main.lua after the server is fully ready / 由 main.lua 在服务器完全就绪后调用
 -- =====================================================================================
 
 local lib = require("modules.lib") -- shared config library / 共享配置库
@@ -30,7 +30,7 @@ local function getServerMap()
 end
 
 -- Show server info when the server starts / 服务器启动时显示服务器信息
-function SXMY_loginfo_onInit()
+function SXMY_loginfo_Startup()
     -- Server start time / 服务器启动时间
     if lib.get("loginfo", "startTime", true) then
         log(lib.msg("服务器启动时间: ", "Server start time: ") .. os.date("%Y.%m.%d-%H.%M.%S"))
@@ -51,5 +51,3 @@ function SXMY_loginfo_onInit()
     end
 end
 
--- Register event handler / 注册事件处理函数
-MP.RegisterEvent("onInit", "SXMY_loginfo_onInit")
