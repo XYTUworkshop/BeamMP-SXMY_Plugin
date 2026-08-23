@@ -9,6 +9,7 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 - **Modular architecture**: `main.lua` acts as the main loader, each feature lives in its own file and can be toggled in the config file.
 - **Auto-discovered modules**: the module list is read automatically from `config.toml`, no code changes needed to add features.
 - **Welcome message (WelcomeMsg)**: sends the configured welcome text to a player on join via private message, supports any language, `\n` splits into multiple messages.
+- **Auth**: `/reg` register, `/login` login, SHA-256 password hashing; unauthenticated players cannot chat or spawn vehicles; password rules configurable.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
 - **Server info log (loginfo)**: outputs server start time, server version and server map on startup, each line can be toggled separately.
 
@@ -22,6 +23,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 ├── README.en.md         # English README (this file)
 └── modules/             # Module directory (subfolder, not auto-loaded; loaded via require in main.lua)
     ├── lib.lua          # Shared config library (parsing, language, discovery)
+    ├── Auth.lua         # Auth feature (register/login/blocking)
     ├── WelcomeMsg.lua   # Welcome message feature
     └── loginfo.lua      # Server info log feature
 ```
@@ -55,6 +57,12 @@ The config file is at `Resources/Server/BeamMP-SXMY_Plugin/config.toml`; a **ser
 [General]
 language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文） / Plugin log language ("zh" Chinese, "en" English)
 
+[Auth]
+enable = true          # 身份认证功能开关 / Auth module switch
+passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
+passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
+passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
+
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
@@ -71,6 +79,10 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | Key | Description |
 |---|---|
 | `[General].language` | Plugin log language: `"zh"` Chinese, `"en"` English |
+| `[Auth].enable` | Enable/disable the auth feature |
+| `[Auth].passwdlen` | Minimum password length (characters), default 8 |
+| `[Auth].passwdcase` | Require both uppercase and lowercase letters in the password |
+| `[Auth].passwdsymbol` | Require a special character in the password |
 | `[WelcomeMsg].enable` | Enable/disable the welcome message feature |
 | `[WelcomeMsg].delay` | Send delay in seconds, waits for the player to sync, default 12 |
 | `[WelcomeMsg].showtest` | Show the welcome text test on startup (after plugin and loginfo output) |
@@ -93,6 +105,26 @@ enable = true
 (Both `enable` and `enabled` keys are supported)
 
 3. Restart the server; `main.lua` auto-discovers and loads the module, and lists it in the startup summary.
+
+## Auth Commands
+
+Type in the in-game chat:
+
+| Command | Description |
+|---|---|
+| `/reg nickname password confirmpassword` | Register and log in |
+| `/login nickname password` | Log in |
+
+- Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.
+- Logged in: messages starting with `/` are hidden from others (commands are not broadcast).
+- Accounts stored in `users.txt`, passwords as SHA-256 hashes.
+
+## Security Notes
+
+- Passwords are typed in chat; with `LogChat = true` the server console/log records chat (including passwords) — keep the console admin-only.
+- Passwords stored as salted SHA-256 (`salt$hash`), legacy unsalted accounts still work; for production consider a slow hash (e.g. bcrypt).
+- Built-in brute-force protection: lockout after 5 consecutive failed logins (60 seconds), tracked by player IP, not bypassable by reconnecting with a new server ID.
+- Nicknames are limited to letters, digits and underscores to keep the accounts file format safe.
 
 Inside a module, use `lib = require("modules.lib")` for config access (`lib.getConfig()`, `lib.enabled(section)`, `lib.get(section, key, default)`, `lib.msg(zhText, enText)`). To run logic after the main summary, register the `onInit` event. Prefix event handlers with `SXMY_ModuleName_EventName` to avoid collisions.
 

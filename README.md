@@ -9,6 +9,8 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **模块化架构**：`main.lua` 作为主加载器，每个功能一个独立文件，可在配置文件中单独开关
 - **自动发现模块**：模块列表自动从 `config.toml` 读取，新增功能无需修改任何代码
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
+- **身份认证（Auth）**：`/reg` 注册、`/login` 登录，密码 SHA-256 哈希存储；未登录玩家聊天不可见、不可刷车；密码规则（长度/大小写/特殊符号）可配置
+  Auth: `/reg` register, `/login` login, SHA-256 password hashing; unauthenticated players cannot chat or spawn vehicles; password rules configurable
 - **中英日志切换**：`[General] language` 可设置 `zh` 或 `en`，插件控制台日志只输出所选语言
 - **服务器信息日志（loginfo）**：启动时输出服务器启动时间、服务器版本、服务器地图，每项可单独开关
 
@@ -22,6 +24,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 ├── README.en.md         # 英文说明
 └── modules/             # 功能模块目录（子文件夹，不会被自动加载，由 main.lua require 加载）
     ├── lib.lua          # 共享配置解析库（配置解析、语言切换、模块发现）
+    ├── Auth.lua         # 身份认证功能（注册/登录/拦截）
     ├── WelcomeMsg.lua   # 进服信息功能
     └── loginfo.lua      # 服务器信息日志功能
 ```
@@ -55,6 +58,12 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [General]
 language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文） / Plugin log language ("zh" Chinese, "en" English)
 
+[Auth]
+enable = true          # 身份认证功能开关 / Auth module switch
+passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
+passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
+passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
+
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
@@ -71,6 +80,10 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | 配置项 | 说明 |
 |---|---|
 | `[General].language` | 插件日志语言：`"zh"` 中文，`"en"` 英文 |
+| `[Auth].enable` | 启用/禁用身份认证功能 |
+| `[Auth].passwdlen` | 密码最小长度（位），默认 8 |
+| `[Auth].passwdcase` | 是否要求密码同时包含大小写字母 |
+| `[Auth].passwdsymbol` | 是否要求密码包含特殊符号 |
 | `[WelcomeMsg].enable` | 启用/禁用进服信息功能 |
 | `[WelcomeMsg].delay` | 发送延迟（秒），等待玩家同步完成，默认 12 |
 | `[WelcomeMsg].showtest` | 启动时显示欢迎文本测试（在插件与 loginfo 输出后） |
@@ -95,6 +108,32 @@ enable = true
 3. 重启服务器，`main.lua` 会自动发现并加载该模块，并在启动汇总中列出
 
 模块内可通过 `lib = require("modules.lib")` 使用配置接口（`lib.getConfig()`、`lib.enabled(节名)`、`lib.get(节, 键, 默认)`、`lib.msg(中文文本, 英文文本)`）。如需在 main 汇总之后执行逻辑，可注册 `onInit` 事件。事件处理函数建议使用 `SXMY_模块名_事件名` 前缀避免冲突。
+
+## 命令说明（Auth）
+
+在游戏内聊天框输入 / Type in the in-game chat:
+
+| 命令 / Command | 说明 / Description |
+|---|---|
+| `/reg 昵称 密码 确认密码` | 注册并登录 / Register and log in |
+| `/login 昵称 密码` | 登录 / Log in |
+
+- 未登录玩家：聊天消息他人不可见，**不可刷载具**（含编辑/替换车辆）；每 5 秒私信提示注册/登录；登录失败 5 次锁定 60 秒
+  Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.
+- 已登录玩家：`/` 开头的消息他人不可见（命令不广播）
+  Logged in: messages starting with `/` are hidden from others (commands are not broadcast).
+- 账户保存于插件根目录 `users.txt`，密码为 SHA-256 哈希 / Accounts stored in `users.txt`, passwords as SHA-256 hashes.
+
+## 安全注意事项 / Security Notes
+
+- 密码通过聊天输入，`ServerConfig.toml` 中 `LogChat = true` 时服务器控制台/日志会记录聊天内容（含密码），建议仅管理员可见服务器控制台
+  Passwords are typed in chat; with `LogChat = true` the server console/log records chat (including passwords) — keep the console admin-only.
+- 密码以加盐 SHA-256 存储（`盐$哈希` 格式），兼容旧版无盐账户；生产环境仍建议升级为慢哈希（如 bcrypt）
+  Passwords stored as salted SHA-256 (`salt$hash`), legacy unsalted accounts still work; for production consider a slow hash (e.g. bcrypt).
+- 已内置登录失败锁定（连续 5 次/锁定 60 秒），按玩家 IP 追踪，重连更换服务器 ID 无法绕过
+  Built-in brute-force protection: lockout after 5 consecutive failed logins (60 seconds), tracked by player IP, not bypassable by reconnecting with a new server ID.
+- 昵称仅允许字母、数字、下划线，防止破坏账户文件格式
+  Nicknames are limited to letters, digits and underscores to keep the accounts file format safe.
 
 ## 常见问题
 

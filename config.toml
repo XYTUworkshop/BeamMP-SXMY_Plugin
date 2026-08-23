@@ -1,6 +1,12 @@
 [General]
 language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文） / Plugin log language ("zh" Chinese, "en" English)
 
+[Auth]
+enable = true          # 身份认证功能开关 / Auth module switch
+passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
+passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
+passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
+
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 10         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
