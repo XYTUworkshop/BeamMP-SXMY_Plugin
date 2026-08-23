@@ -153,4 +153,4 @@ Inside a module, use `lib = require("modules.lib")` for config access (`lib.getC
 
 ## License
 
-This project is for learning and reference purposes; free to modify and redistribute.
+This project uses the GPL 3.0 license, for learning and reference only, and can be freely modified and distributed.
