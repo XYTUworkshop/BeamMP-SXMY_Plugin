@@ -98,6 +98,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdlen` | Minimum password length (characters), default 8 |
 | `[Auth].passwdcase` | Require both uppercase and lowercase letters in the password |
 | `[Auth].passwdsymbol` | Require a special character in the password |
+| `[Auth].maxRegsPerIP` | Max registrations per IP (0 = unlimited), default 3 |
 | `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced with the nickname, empty disables it |
 | `[NameTag].enable` | Enable/disable the chat nickname feature |
 | `[VehicleTag].enable` | Enable/disable the vehicle tag feature (requires `Resources/Client/SXMYVehicleTag.zip`) |

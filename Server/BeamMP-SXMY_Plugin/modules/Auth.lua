@@ -14,6 +14,7 @@ lib.ensureSection("Auth", {
     passwdlen = { v = 8, c = "密码最小长度（位）/ Minimum password length (characters)" },
     passwdcase = { v = false, c = "是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)" },
     passwdsymbol = { v = false, c = "是否要求特殊符号（不要求也可使用）/ Require special characters (optional)" },
+    maxRegsPerIP = { v = 3, c = "单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)" },
     LoginMsg = { v = "欢迎 <name> 登录服务器", c = "登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled" },
 })
 -- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
@@ -94,8 +95,10 @@ local players = {} -- player_id -> { nick, loggedIn, joinedAt, lastPrompt } / �
 local loginFails = {} -- player_id -> { count, lockedUntil, lastTry } for brute-force protection / 登录失败记录（防暴力破解，断线保留防重连绕过）
 
 -- Load accounts from the file / 从文件加载账户
+-- Each line may carry the registration IP: "nick = hash [ip]" / 每行可带注册 IP："nick = hash [ip]"
 local function loadAccounts()
     accounts = {}
+    ipRegCount = {}
     local fh, err = io.open(ACCOUNTS_FILE, "r")
     if not fh then
         print("[SXMY_Auth] " .. lib.msg("账户文件读取失败", "Failed to read accounts file") .. " (" .. tostring(err) .. ")")
@@ -103,24 +106,31 @@ local function loadAccounts()
     end
     for line in fh:lines() do
         -- Hash format: "salt$sha256" for new accounts, plain sha256 for legacy ones / 新账户格式 salt$sha256，旧账户为纯 sha256
-        local nick, hash = line:match("^(%S+)%s*=%s*(%S+)$")
+        -- The registration IP is optional, legacy accounts have none / 注册 IP 可选，旧账户没有
+        local nick, hash, ip = line:match("^(%S+)%s*=%s*(%S+)%s*(%S*)$")
         if nick and hash then
             accounts[nick] = hash
+            if ip and ip ~= "" then
+                ipRegCount[ip] = (ipRegCount[ip] or 0) + 1
+            end
         end
     end
     fh:close()
 end
 
--- Append a new account to the file / 向文件追加新账户
-local function saveAccount(nick, hash)
+-- Append a new account to the file, recording the registration IP / 向文件追加新账户（记录注册 IP）
+local function saveAccount(nick, hash, ip)
     local fh, err = io.open(ACCOUNTS_FILE, "a")
     if not fh then
         print("[SXMY_Auth] " .. lib.msg("账户文件写入失败", "Failed to write accounts file") .. " (" .. tostring(err) .. ")")
         return false
     end
-    fh:write(nick, " = ", hash, "\n")
+    fh:write(nick, " = ", hash, (ip and ip ~= "" and " " .. ip or ""), "\n")
     fh:close()
     accounts[nick] = hash
+    if ip and ip ~= "" then
+        ipRegCount[ip] = (ipRegCount[ip] or 0) + 1
+    end
     return true
 end
 
@@ -268,8 +278,17 @@ local function handleRegister(player_id, args)
         notify(player_id, "该昵称已被使用 请更换昵称或登录", "Nickname already taken, use another or log in")
         return
     end
+    -- Per-IP registration limit (0 = unlimited) / 单 IP 注册数量限制（0 不限制）
+    local maxRegs = lib.get("Auth", "maxRegsPerIP", 3)
+    if maxRegs and maxRegs > 0 then
+        local ip = getPlayerIp(player_id)
+        if ip and (ipRegCount[ip] or 0) >= maxRegs then
+            notify(player_id, "该IP注册的账号数量已达上限", "Registration limit reached for this IP")
+            return
+        end
+    end
     local salt = makeSalt(player_id)
-    if not saveAccount(nick, salt .. "$" .. SXMY_Auth_sha256(salt .. passwd)) then
+    if not saveAccount(nick, salt .. "$" .. SXMY_Auth_sha256(salt .. passwd), getPlayerIp(player_id)) then
         notify(player_id, "账户保存失败 请联系管理员", "Failed to save account, contact an admin")
         return
     end

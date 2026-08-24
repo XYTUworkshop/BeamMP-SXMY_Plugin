@@ -95,6 +95,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdlen` | 密码最小长度（位），默认 8 |
 | `[Auth].passwdcase` | 是否要求密码同时包含大小写字母 |
 | `[Auth].passwdsymbol` | 是否要求密码包含特殊符号 |
+| `[Auth].maxRegsPerIP` | 单个 IP 最多注册账户数（0 不限制），默认 3 |
 | `[Auth].LoginMsg` | 登录成功广播消息（`/say`），`<name>` 替换为玩家昵称，留空则不发送 |
 | `[NameTag].enable` | 启用/禁用聊天昵称功能 |
 | `[VehicleTag].enable` | 启用/禁用车辆标签功能（需 `Resources/Client/SXMYVehicleTag.zip`） |
