@@ -9,6 +9,14 @@
 
 local lib = require("modules.lib") -- shared config library / 共享配置库
 
+-- 本模块配置：缺失键自动追加（含中英注释），用户已有配置不覆盖 / this module's own config: missing keys appended with comments, user settings kept
+lib.ensureSection("VehicleTag", { enable = { v = true, c = "车辆标签功能开关（需 Resources/Client 的 SXMYVehicleTag mod）/ Vehicle tag module switch (requires the SXMYVehicleTag client mod)" } })
+-- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
+if not lib.get("VehicleTag", "enable", true) then
+    print("[SXMY_Plugin] " .. lib.msg("VehicleTag 已禁用", "VehicleTag disabled"))
+    return
+end
+
 local nickCache = {} -- player_id -> nickname, used to sync to newly joined players / 昵称缓存（用于同步给新进服玩家）
 
 -- Broadcast a nickname update to all clients / 向所有客户端广播昵称更新

@@ -59,6 +59,8 @@ Resources/Server/BeamMP-SXMY_Plugin/
 
 The config file is at `Resources/Server/BeamMP-SXMY_Plugin/config.toml`; a **server restart** is required after changes.
 
+**Auto-generated config**: each feature module generates its **own** config section on load — missing keys are appended with defaults (and zh/en comments) to `config.toml`. **Removing a module file (i.e. dropping that feature) stops its config section from being generated**; your custom settings (e.g. welcome text, password rules) are never overwritten. A fresh install auto-generates the full config on first start.
+
 ```toml
 [General]
 language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文） / Plugin log language ("zh" Chinese, "en" English)

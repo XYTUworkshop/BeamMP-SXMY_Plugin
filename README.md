@@ -59,6 +59,8 @@ Resources/Server/BeamMP-SXMY_Plugin/
 
 配置文件位于 `Resources/Server/BeamMP-SXMY_Plugin/config.toml`，修改后**需重启服务器**生效。
 
+**配置自动生成**：每个功能模块由**自己**负责生成自己的配置节——模块加载时检查缺失的配置项，用默认值（含中英注释）自动追加到 `config.toml`。**删除模块文件（即不需要该功能）后，其配置项不再生成**；你已有的自定义配置（如欢迎文本、密码规则）永远不会被覆盖。全新安装时首次启动即自动生成完整配置。
+
 ```toml
 [General]
 language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文） / Plugin log language ("zh" Chinese, "en" English)

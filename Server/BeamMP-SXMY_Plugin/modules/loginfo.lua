@@ -7,6 +7,19 @@
 
 local lib = require("modules.lib") -- shared config library / 共享配置库
 
+-- 本模块配置：缺失键自动追加（含中英注释），用户已有配置不覆盖 / this module's own config: missing keys appended with comments, user settings kept
+lib.ensureSection("loginfo", {
+    enable = { v = true, c = "服务器信息日志功能开关 / Server info log module switch" },
+    startTime = { v = true, c = "显示服务器启动时间 / Show server start time" },
+    serverVersion = { v = true, c = "显示服务器版本 / Show server version" },
+    serverMap = { v = true, c = "显示服务器地图（读取 ServerConfig.toml）/ Show server map (read from ServerConfig.toml)" },
+})
+-- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
+if not lib.get("loginfo", "enable", true) then
+    print("[SXMY_Plugin] " .. lib.msg("loginfo 已禁用", "loginfo disabled"))
+    return
+end
+
 local CONFIG_FILE = "ServerConfig.toml" -- server config, relative to working dir / 服务器配置（相对工作目录）
 
 -- Print a log line with the module prefix / 以模块前缀打印日志行

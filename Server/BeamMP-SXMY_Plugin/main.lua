@@ -19,26 +19,55 @@ end
 
 local lib = require("modules.lib") -- shared config library / 共享配置库
 
--- Load a module and return whether it succeeded / 加载模块并返回是否成功
-local function loadModule(moduleName)
-    local ok, err = pcall(require, "modules." .. moduleName)
-    if ok then
-        return true
+-- 配置文件绝对路径（失败时回退相对路径）/ absolute config path (relative fallback)
+local function getConfigPath()
+    local fh = io.popen("cd")
+    if fh then
+        local cwd = fh:read("*a"):gsub("%s+$", "")
+        fh:close()
+        if cwd ~= "" then
+            return cwd .. "\\Resources\\Server\\BeamMP-SXMY_Plugin\\config.toml"
+        end
     end
-    print("[SXMY_Plugin] " .. lib.msg("模块加载失败: ", "Module load failed: ") .. moduleName .. " -> " .. tostring(err))
-    return false
+    return "Resources/Server/BeamMP-SXMY_Plugin/config.toml"
 end
 
--- Auto-discover enabled modules from config.toml, no manual list to maintain / 自动从 config.toml 发现已启用模块，无需手动维护列表
-local loadedCount = 0 -- modules loaded successfully / 成功加载的模块数
-local totalCount = 0 -- enabled modules in total / 启用的模块总数
-local loadedNames = {} -- names of successfully loaded modules / 成功加载的模块名
+-- 首启检测：配置文件不存在时提示，模块加载时自动生成 / first-run check: hint when the config file is missing (modules generate it on load)
+local configMissing = not lib.configExists()
+if configMissing then
+    print("[SXMY_Plugin] " .. lib.msg("未发现配置文件 正在生成", "Config file not found, generating"))
+end
+
+-- Ensure the General config section exists (plugin-wide defaults) / 确保 General 配置节存在（插件级默认值）
+lib.ensureSection("General", { language = "zh" })
+
+-- 加载全部模块：扫描 modules/ 目录，每个模块自行生成配置并按自身 enable 决定是否启用
+-- Load every module: scan the modules folder; each module writes its own config and checks its own enable
+-- 删除模块文件即不再生成其配置项 / removing a module file stops its config section from being generated
+local moduleFiles = lib.scanModules() -- present module files / 存在的模块文件
+local loadedOK = {} -- name -> loaded without error / 模块名 -> 是否加载成功
+for _, moduleName in ipairs(moduleFiles) do
+    local ok = pcall(require, "modules." .. moduleName)
+    loadedOK[moduleName] = ok
+    if not ok then
+        print("[SXMY_Plugin] " .. lib.msg("模块加载失败: ", "Module load failed: ") .. moduleName)
+    end
+end
+
+-- 统计：已启用（config enable=true）且加载成功的模块 / count modules that are enabled and loaded
+local loadedCount = 0 -- enabled and loaded modules / 已启用且成功加载的模块数
+local totalCount = #moduleFiles -- all present modules / 存在的模块总数
+local loadedNames = {} -- names of enabled loaded modules / 已启用模块名
 for _, moduleName in ipairs(lib.getEnabledModules()) do
-    totalCount = totalCount + 1
-    if loadModule(moduleName) then
+    if loadedOK[moduleName] then
         loadedCount = loadedCount + 1
         loadedNames[#loadedNames + 1] = moduleName
     end
+end
+
+-- 首启时配置文件已生成提示 / first-run: config generated hint
+if configMissing then
+    print("[SXMY_Plugin] " .. lib.msg("配置文件已生成 路径：", "Config file generated at: ") .. getConfigPath())
 end
 
 -- Startup summary logs, printed once / 启动汇总日志，仅输出一次

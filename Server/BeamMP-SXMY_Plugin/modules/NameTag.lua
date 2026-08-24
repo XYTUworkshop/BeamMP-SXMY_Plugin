@@ -10,6 +10,14 @@
 
 local lib = require("modules.lib") -- shared config library / 共享配置库
 
+-- 本模块配置：缺失键自动追加（含中英注释），用户已有配置不覆盖 / this module's own config: missing keys appended with comments, user settings kept
+lib.ensureSection("NameTag", { enable = { v = true, c = "聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)" } })
+-- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
+if not lib.get("NameTag", "enable", true) then
+    print("[SXMY_Plugin] " .. lib.msg("NameTag 已禁用", "NameTag disabled"))
+    return
+end
+
 -- Whether the Auth module is enabled in the config / Auth 模块是否在配置中启用
 local authEnabled = lib.get("Auth", "enable", false)
 
@@ -49,7 +57,7 @@ function SXMY_NameTag_onChatMessage(player_id, player_name, message)
         -- Auth 模式：仅已登录玩家带昵称前缀；/ 命令保持私有（由 Auth 处理）
         local nick = getNick(player_id)
         if nick and message:sub(1, 1) ~= "/" then
-            MP.SendChatMessage(-1, "- " .. nick .. " - " .. message)
+            MP.SendChatMessage(-1, "<<fuckbmp> " .. nick .. " <fuckbmp>> " .. message)
             return 1
         end
         return 0
@@ -87,7 +95,7 @@ function SXMY_NameTag_onChatMessage(player_id, player_name, message)
     -- Prefix normal messages with the tag / 普通消息添加昵称前缀
     local tag = playerTags[player_id]
     if tag then
-        MP.SendChatMessage(-1, "- " .. tag .. " - " .. message)
+        MP.SendChatMessage(-1, "<<fuckbmp> " .. tag .. " <fuckbmp>> " .. message)
         return 1
     end
     return 0
