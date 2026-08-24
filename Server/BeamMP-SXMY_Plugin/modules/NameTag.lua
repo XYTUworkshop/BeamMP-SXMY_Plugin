@@ -87,7 +87,7 @@ function SXMY_NameTag_onChatMessage(player_id, player_name, message)
     -- Prefix normal messages with the tag / 普通消息添加昵称前缀
     local tag = playerTags[player_id]
     if tag then
-        MP.SendChatMessage(-1, "<" .. tag .. "> " .. message)
+        MP.SendChatMessage(-1, "[" .. tag .. "] " .. message)
         return 1
     end
     return 0

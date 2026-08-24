@@ -5,11 +5,16 @@
 -- 支持控制台 reloadSXMY 命令热重载 / console command reloadSXMY hot-reloads the plugin
 -- =====================================================================================
 
--- 清模块 require 缓存，确保热重载时模块重新执行 / clear the module require cache so modules re-run on hot reload
+-- 清模块 require 缓存，确保热重载时所有模块重新执行 / clear the module require cache so all modules re-run on hot reload
+-- Collect first, then remove: deleting while pairs() iterates may skip entries / 先收集再删除：pairs 遍历中删除可能跳过部分项
+local cachedModules = {}
 for name in pairs(package.loaded) do
     if name:match("^modules%.") then
-        package.loaded[name] = nil
+        cachedModules[#cachedModules + 1] = name
     end
+end
+for _, name in ipairs(cachedModules) do
+    package.loaded[name] = nil
 end
 
 local lib = require("modules.lib") -- shared config library / 共享配置库
