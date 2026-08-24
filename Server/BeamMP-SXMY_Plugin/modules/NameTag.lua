@@ -49,7 +49,7 @@ function SXMY_NameTag_onChatMessage(player_id, player_name, message)
         -- Auth 模式：仅已登录玩家带昵称前缀；/ 命令保持私有（由 Auth 处理）
         local nick = getNick(player_id)
         if nick and message:sub(1, 1) ~= "/" then
-            MP.SendChatMessage(-1, "<" .. nick .. "> " .. message)
+            MP.SendChatMessage(-1, "- " .. nick .. " - " .. message)
             return 1
         end
         return 0
@@ -87,7 +87,7 @@ function SXMY_NameTag_onChatMessage(player_id, player_name, message)
     -- Prefix normal messages with the tag / 普通消息添加昵称前缀
     local tag = playerTags[player_id]
     if tag then
-        MP.SendChatMessage(-1, "[" .. tag .. "] " .. message)
+        MP.SendChatMessage(-1, "- " .. tag .. " - " .. message)
         return 1
     end
     return 0
