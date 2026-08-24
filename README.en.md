@@ -136,6 +136,12 @@ Type in the in-game chat:
 - Logged in: messages starting with `/` are hidden from others (commands are not broadcast).
 - Accounts stored in `users.txt`, passwords as SHA-256 hashes.
 
+## Console Commands
+
+| Command | Description |
+|---|---|
+| `reloadSXMY` | Hot-reload the plugin (type in the server console). Apply plugin file changes without restarting the server; note: players' login states are reset on reload and they must log in again. |
+
 ## Security Notes
 
 - Passwords are typed in chat; with `LogChat = true` the server console/log records chat (including passwords) — keep the console admin-only.
@@ -153,4 +159,4 @@ Inside a module, use `lib = require("modules.lib")` for config access (`lib.getC
 
 ## License
 
-This project uses the GPL 3.0 license, for learning and reference only, and can be freely modified and distributed.
+This project uses the GPL-3.0 license, for learning and reference purposes only; free to modify and redistribute.
