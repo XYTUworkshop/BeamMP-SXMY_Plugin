@@ -136,7 +136,7 @@ Type in the in-game chat:
 |---|---|
 | `/reg nickname password confirmpassword` | Register and log in |
 | `/login nickname password` | Log in (`/logout` first if already logged in) |
-| `/logout` | Log out (clears the login state and vehicle-tag nickname) |
+| `/logout` | Log out (clears the login state, despawns all vehicles and clears the vehicle-tag nickname) |
 | `/n nickname` | Set the chat nickname (only when Auth is disabled) |
 
 - Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.

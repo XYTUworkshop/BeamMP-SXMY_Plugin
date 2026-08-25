@@ -419,6 +419,13 @@ local function handleLogout(player_id)
         notify(player_id, "尚未登录", "You are not logged in")
         return
     end
+    -- Despawn all of the player's vehicles / 删除该玩家的所有车辆
+    local ok, vehs = pcall(MP.GetPlayerVehicles, player_id)
+    if ok and type(vehs) == "table" then
+        for vehId in pairs(vehs) do
+            pcall(MP.RemoveVehicle, player_id, vehId)
+        end
+    end
     -- Keep the record (joinedAt drives the periodic prompts), just clear the login state and nickname / 保留记录（joinedAt 用于周期提示），仅清除登录状态与昵称
     players[player_id] = { loggedIn = false, joinedAt = os.time(), lastPrompt = os.time() }
     notify(player_id, "已退出登录", "Logged out")
