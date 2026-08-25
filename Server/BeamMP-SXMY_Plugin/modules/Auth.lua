@@ -15,6 +15,7 @@ lib.ensureSection("Auth", {
     { key = "passwdcase", v = false, c = "是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)" },
     { key = "passwdsymbol", v = false, c = "是否要求特殊符号（不要求也可使用）/ Require special characters (optional)" },
     { key = "maxRegsPerIP", v = 3, c = "单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)" },
+    { key = "pbkdf2Iter", v = 1000, c = "PBKDF2 慢哈希迭代次数（越大越安全但登录越慢）/ PBKDF2 slow-hash iterations (higher = safer but slower logins)" },
     { key = "LoginMsg", v = "欢迎 <name> 登录服务器", c = "登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled" },
 })
 -- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
@@ -46,9 +47,8 @@ local function rrot(x, n)
     return ((x >> n) | (x << (32 - n))) & 0xFFFFFFFF
 end
 
--- SHA-256 hash of a string, returns 64 lowercase hex chars / 字符串 SHA-256，返回 64 位小写十六进制
--- Global so it can be tested and reused / 设为全局以便测试与复用
-function SXMY_Auth_sha256(msg)
+-- SHA-256 core: hashes msg and returns the 8 state words / SHA-256 核心：哈希消息并返回 8 个状态字
+local function sha256Core(msg)
     local H = { 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 }
     -- Pad: 0x80, zeros, then 64-bit big-endian bit length / 填充：0x80、零、64 位大端长度
     local bitlen = #msg * 8
@@ -82,13 +82,117 @@ function SXMY_Auth_sha256(msg)
         H[7] = (H[7] + g) & 0xFFFFFFFF
         H[8] = (H[8] + h) & 0xFFFFFFFF
     end
+    return H
+end
+
+-- SHA-256 hash of a string, returns 64 lowercase hex chars / 字符串 SHA-256，返回 64 位小写十六进制
+-- Global so it can be tested and reused / 设为全局以便测试与复用
+function SXMY_Auth_sha256(msg)
+    local H = sha256Core(msg)
     local hex = {}
     for _, v in ipairs(H) do
         hex[#hex + 1] = string.format("%08x", v)
     end
     return table.concat(hex)
 end
+
+-- SHA-256 raw digest (32 bytes) / SHA-256 原始摘要（32 字节）
+local function sha256Raw(msg)
+    local H = sha256Core(msg)
+    local out = {}
+    for _, v in ipairs(H) do
+        out[#out + 1] = string.char(math.floor(v / 0x1000000) % 0x100, math.floor(v / 0x10000) % 0x100, math.floor(v / 0x100) % 0x100, v % 0x100)
+    end
+    return table.concat(out)
+end
 -- ==================== end SHA-256 / SHA-256 结束 ====================
+
+-- ==================== PBKDF2-HMAC-SHA256 (slow hash) / 慢哈希 ====================
+local DEFAULT_PBKDF2_ITER = 1000 -- PBKDF2 iteration default / PBKDF2 迭代次数默认值
+-- PBKDF2 iterations from config, clamped to a positive integer / 从配置读取迭代次数（限制为正整数）
+local function getIterations()
+    local v = tonumber(lib.get("Auth", "pbkdf2Iter", DEFAULT_PBKDF2_ITER))
+    if not v or v < 1 then
+        return DEFAULT_PBKDF2_ITER
+    end
+    return math.floor(v)
+end
+
+-- HMAC-SHA256 / HMAC-SHA256 消息认证码
+local function hmacSha256(key, msg)
+    if #key > 64 then
+        key = sha256Raw(key)
+    end
+    local ipad, opad = {}, {}
+    for i = 1, 64 do
+        local b = key:byte(i) or 0
+        ipad[i] = string.char(b ~ 0x36)
+        opad[i] = string.char(b ~ 0x5c)
+    end
+    local inner = sha256Raw(table.concat(ipad) .. msg)
+    return sha256Raw(table.concat(opad) .. inner)
+end
+
+-- Byte-wise XOR of two equal-length strings / 逐字节异或两个等长字符串
+local function xorBytes(a, b)
+    local out = {}
+    for i = 1, #a do
+        out[i] = string.char(a:byte(i) ~ b:byte(i))
+    end
+    return table.concat(out)
+end
+
+-- PBKDF2-HMAC-SHA256, returns dkLen raw bytes / PBKDF2-HMAC-SHA256，返回 dkLen 原始字节
+local function pbkdf2(password, salt, iterations, dkLen)
+    local out = {}
+    local block = 1
+    while true do
+        local u = hmacSha256(password, salt .. string.pack(">I4", block))
+        local t = u
+        for _ = 2, iterations do
+            u = hmacSha256(password, u)
+            t = xorBytes(t, u)
+        end
+        out[#out + 1] = t
+        block = block + 1
+        if #table.concat(out) >= dkLen then
+            break
+        end
+    end
+    return table.concat(out):sub(1, dkLen)
+end
+
+-- Raw bytes to lowercase hex / 原始字节转小写十六进制
+local function hexEncode(raw)
+    local hex = {}
+    for i = 1, #raw do
+        hex[i] = string.format("%02x", raw:byte(i))
+    end
+    return table.concat(hex)
+end
+
+-- PBKDF2 password hash as "pbkdf2$salt$iter$hex" / PBKDF2 密码哈希字符串
+local function pbkdf2Hash(password, salt)
+    local iter = getIterations()
+    return "pbkdf2$" .. salt .. "$" .. tostring(iter) .. "$" .. hexEncode(pbkdf2(password, salt, iter, 32))
+end
+
+-- Parse a stored hash string into { mode, salt, iter, hex } / 解析存储的哈希字符串
+local function parseStored(stored)
+    local salt, iter, hex = stored:match("^pbkdf2%$([%x]+)%$(%d+)%$([%x]+)$")
+    if salt and iter and hex and #hex == 64 then
+        return { mode = "pbkdf2", salt = salt, iter = tonumber(iter), hex = hex }
+    end
+    local salt2, hex2 = stored:match("^(%x+)%$(%x+)$")
+    if salt2 and hex2 and #hex2 == 64 then
+        return { mode = "sha256", salt = salt2, hex = hex2 }
+    end
+    if stored:match("^%x+$") and #stored == 64 then
+        return { mode = "sha256", salt = nil, hex = stored }
+    end
+    return nil
+end
+-- ==================== end PBKDF2 / PBKDF2 结束 ====================
 
 local accounts = {} -- nickname -> password hash, loaded from file / 昵称 -> 密码哈希（从文件加载）
 local players = {} -- player_id -> { nick, loggedIn, joinedAt, lastPrompt } / 玩家状态表
@@ -132,6 +236,62 @@ local function saveAccount(nick, hash, ip)
         ipRegCount[ip] = (ipRegCount[ip] or 0) + 1
     end
     return true
+end
+
+-- Rewrite the account file after a legacy account logs in (transparent PBKDF2 upgrade) / 旧账户登录成功后重写账户文件（透明升级为 PBKDF2）
+local function upgradeAccount(nick, passwd, salt)
+    local newHash = pbkdf2Hash(passwd, salt)
+    local lines = {}
+    local fh, ferr = io.open(ACCOUNTS_FILE, "r")
+    if fh then
+        for line in fh:lines() do
+            lines[#lines + 1] = line
+        end
+        fh:close()
+    else
+        print("[SXMY_Auth] " .. lib.msg("账户文件读取失败", "Failed to read accounts file") .. " (" .. tostring(ferr) .. ")")
+        return
+    end
+    local out = {}
+    local replaced = false
+    for _, line in ipairs(lines) do
+        local n, h, ip = line:match("^(%S+)%s*=%s*(%S+)%s*(%S*)$")
+        if n == nick then
+            out[#out + 1] = nick .. " = " .. newHash .. (ip and ip ~= "" and " " .. ip or "")
+            replaced = true
+        else
+            out[#out + 1] = line
+        end
+    end
+    if not replaced then
+        out[#out + 1] = nick .. " = " .. newHash
+    end
+    -- Atomic rewrite: temp file -> backup -> swap -> restore on failure / 原子重写：临时文件 -> 备份 -> 替换 -> 失败回滚
+    local tmp = ACCOUNTS_FILE .. ".tmp"
+    local fw, werr = io.open(tmp, "w")
+    if not fw then
+        print("[SXMY_Auth] " .. lib.msg("账户文件升级写入失败", "Failed to write upgraded accounts file") .. " (" .. tostring(werr) .. ")")
+        return
+    end
+    fw:write(table.concat(out, "\n"), "\n")
+    fw:close()
+    local bak = ACCOUNTS_FILE .. ".bak"
+    os.remove(bak)
+    local backed, berr = os.rename(ACCOUNTS_FILE, bak)
+    if backed then
+        local ok, rerr = os.rename(tmp, ACCOUNTS_FILE)
+        if ok then
+            os.remove(bak)
+            accounts[nick] = newHash
+            print("[SXMY_Auth] " .. lib.msg("账户已升级为慢哈希", "Account upgraded to slow hash") .. ": " .. nick)
+        else
+            os.rename(bak, ACCOUNTS_FILE)
+            print("[SXMY_Auth] " .. lib.msg("账户文件升级失败", "Failed to upgrade accounts file") .. " (" .. tostring(rerr) .. ")")
+        end
+    else
+        os.remove(tmp)
+        print("[SXMY_Auth] " .. lib.msg("账户文件升级失败", "Failed to upgrade accounts file") .. " (" .. tostring(berr) .. ")")
+    end
 end
 
 -- Get the player's IP for brute-force tracking / 获取玩家 IP（用于暴力破解追踪）
@@ -288,7 +448,7 @@ local function handleRegister(player_id, args)
         end
     end
     local salt = makeSalt(player_id)
-    if not saveAccount(nick, salt .. "$" .. SXMY_Auth_sha256(salt .. passwd), getPlayerIp(player_id)) then
+    if not saveAccount(nick, pbkdf2Hash(passwd, salt), getPlayerIp(player_id)) then
         notify(player_id, "账户保存失败 请联系管理员", "Failed to save account, contact an admin")
         return
     end
@@ -317,16 +477,23 @@ local function handleLogin(player_id, args)
     local nick, passwd = args[1], args[2]
     local stored = accounts[nick]
     if stored then
-        -- New format "salt$sha256" or legacy plain sha256 / 新格式 salt$sha256 或旧格式纯 sha256
-        local salt, hash = stored:match("^(%x+)%$(%x+)$")
-        local passHash
-        if salt and hash then
-            passHash = SXMY_Auth_sha256(salt .. passwd)
-        else
-            hash = stored
-            passHash = SXMY_Auth_sha256(passwd)
+        -- New format "pbkdf2$salt$iter$hex" or legacy "salt$sha256" / plain sha256 / 新格式 pbkdf2$salt$iter$hex 或旧格式 salt$sha256 / 纯 sha256
+        local parsed = parseStored(stored)
+        local passOK = false
+        if parsed then
+            if parsed.mode == "pbkdf2" then
+                -- Slow-hash verification / 慢哈希验证
+                passOK = hexEncode(pbkdf2(passwd, parsed.salt, parsed.iter, 32)) == parsed.hex
+            else
+                -- Legacy single SHA-256 (with or without salt); upgrade transparently on success / 旧版单次 SHA-256（带盐或不带盐），成功登录后透明升级
+                local legacy = SXMY_Auth_sha256((parsed.salt or "") .. passwd)
+                passOK = legacy == parsed.hex
+                if passOK then
+                    upgradeAccount(nick, passwd, parsed.salt or makeSalt(player_id))
+                end
+            end
         end
-        if hash == passHash then
+        if passOK then
             loginFails[lockKey] = nil
             players[player_id] = { nick = nick, loggedIn = true, joinedAt = os.time(), lastPrompt = os.time() }
             notify(player_id, "登录成功", "Logged in successfully")

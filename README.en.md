@@ -9,7 +9,7 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 - **Modular architecture**: `main.lua` acts as the main loader, each feature lives in its own file and can be toggled in the config file.
 - **Auto-discovered modules**: the module list is read automatically from `config.toml`, no code changes needed to add features.
 - **Welcome message (WelcomeMsg)**: sends the configured welcome text to a player on join via private message, supports any language, `\n` splits into multiple messages.
-- **Auth**: `/reg` register, `/login` login, SHA-256 password hashing; unauthenticated players cannot chat or spawn vehicles; password rules configurable.
+- **Auth**: `/reg` register, `/login` login, PBKDF2 slow-hash password storage; unauthenticated players cannot chat or spawn vehicles; password rules configurable.
 - **NameTag**: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically.
 - **VehicleTag**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMYVehicleTag` client mod.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
@@ -99,6 +99,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdcase` | Require both uppercase and lowercase letters in the password |
 | `[Auth].passwdsymbol` | Require a special character in the password |
 | `[Auth].maxRegsPerIP` | Max registrations per IP (0 = unlimited), default 3 |
+| `[Auth].pbkdf2Iter` | PBKDF2 slow-hash iterations, default 1000 (higher = safer but slower logins) |
 | `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced with the nickname, empty disables it |
 | `[NameTag].enable` | Enable/disable the chat nickname feature |
 | `[VehicleTag].enable` | Enable/disable the vehicle tag feature (requires `Resources/Client/SXMYVehicleTag.zip`) |
@@ -137,7 +138,7 @@ Type in the in-game chat:
 
 - Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.
 - Logged in: messages starting with `/` are hidden from others (commands are not broadcast).
-- Accounts stored in `users.txt`, passwords as SHA-256 hashes.
+- Accounts stored in `users.txt`, passwords as PBKDF2 slow hashes.
 
 ## Console Commands
 
@@ -148,7 +149,7 @@ Type in the in-game chat:
 ## Security Notes
 
 - Passwords are typed in chat; with `LogChat = true` the server console/log records chat (including passwords) — keep the console admin-only.
-- Passwords stored as salted SHA-256 (`salt$hash`), legacy unsalted accounts still work; for production consider a slow hash (e.g. bcrypt).
+- Passwords stored as **PBKDF2-HMAC-SHA256 slow hashes** (`pbkdf2$salt$iter$hash`); the iteration count is set via `[Auth].pbkdf2Iter` (default 1000 — higher is much harder to crack but logins get slower). Legacy salted/unsalted SHA-256 accounts are **transparently upgraded** to the slow hash after their first successful login.
 - Built-in brute-force protection: lockout after 5 consecutive failed logins (60 seconds), tracked by player IP when available, not bypassable by reconnecting with a new server ID.
 - Nicknames are limited to letters, digits and underscores to keep the accounts file format safe.
 
