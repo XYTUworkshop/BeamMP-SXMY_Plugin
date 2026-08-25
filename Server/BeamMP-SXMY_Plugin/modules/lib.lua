@@ -159,16 +159,113 @@ local function formatValue(v)
     return '"' .. tostring(v):gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\r", "\\r"):gsub("\n", "\\n") .. '"'
 end
 
--- Ensure a config section exists: insert missing keys with defaults and comments, keep existing user settings
--- 确保配置节存在：缺失键用默认值与注释补入，保留用户已有配置
--- The whole file is rewritten so a section header is never duplicated / 整体重写，不会产生重复的节标题
--- defaults entries: { key = value } or { key = { v = value, c = "中文 / English comment" } }
--- defaults 条目：{ key = value } 或 { key = { v = 值, c = "中文 / English 注释" } }
+-- Build a config row from a default item / 由默认条目构造配置行
+local function buildRow(item)
+    local line = item.key .. " = " .. formatValue(item.value)
+    if item.comment then
+        line = line .. "  # " .. item.comment
+    end
+    return line
+end
+
+-- Atomically write the config file and refresh the cache / 原子写入配置文件并刷新缓存
+-- Strategy: write temp -> backup original (if any) -> swap -> restore backup on failure / 策略：写临时文件 -> 备份原文件（若有）-> 替换 -> 失败回滚备份
+local function writeConfig(out)
+    local tmp = CONFIG_PATH .. ".tmp"
+    local bak = CONFIG_PATH .. ".bak"
+    local fw, werr = io.open(tmp, "w")
+    if not fw then
+        print("[SXMY_Plugin] " .. lib.msg("配置写入失败", "Config write failed") .. ": " .. tostring(werr))
+        return
+    end
+    local written = fw:write(table.concat(out, "\n"))
+    local closed = fw:close()
+    if not written or not closed then
+        -- Write failed (e.g. disk full): drop the temp file, keep the original / 写入失败（如磁盘满）：删除临时文件，保留原配置
+        local removedTmp, terr = os.remove(tmp)
+        if not removedTmp then
+            print("[SXMY_Plugin] " .. lib.msg("临时文件删除失败", "Failed to remove temp file") .. ": " .. tostring(terr))
+        end
+        print("[SXMY_Plugin] " .. lib.msg("配置写入失败", "Config write failed"))
+        return
+    end
+    -- Does the original config exist? If not, skip the backup (fresh creation) / 原配置是否存在？不存在则跳过备份（新建场景）
+    local originalExists = false
+    local probe = io.open(CONFIG_PATH, "r")
+    if probe then
+        originalExists = true
+        probe:close()
+    end
+    if originalExists then
+        -- Move the original aside as a backup, then swap in the new file / 原文件先移为备份，再替换为新文件
+        os.remove(bak)
+        local backed, berr = os.rename(CONFIG_PATH, bak)
+        if not backed then
+            local removedTmp, terr = os.remove(tmp)
+            if not removedTmp then
+                print("[SXMY_Plugin] " .. lib.msg("临时文件删除失败", "Failed to remove temp file") .. ": " .. tostring(terr))
+            end
+            print("[SXMY_Plugin] " .. lib.msg("配置写入失败", "Config write failed") .. ": " .. tostring(berr))
+            return
+        end
+    end
+    local ok, rerr = os.rename(tmp, CONFIG_PATH)
+    if not ok then
+        if originalExists then
+            -- Restore the backup / 回滚：恢复备份
+            local restored, rerr2 = os.rename(bak, CONFIG_PATH)
+            if not restored then
+                -- Double failure: keep the backup and stop, never lose the config / 双重失败：保留备份并中止，绝不丢失配置
+                print("[SXMY_Plugin] " .. lib.msg("配置写入失败，原配置已备份至", "Config write failed, original backed up at") .. " " .. bak .. " (" .. tostring(rerr2) .. ")")
+                return
+            end
+        end
+        local removedTmp, terr = os.remove(tmp)
+        if not removedTmp then
+            print("[SXMY_Plugin] " .. lib.msg("临时文件删除失败", "Failed to remove temp file") .. ": " .. tostring(terr))
+        end
+        print("[SXMY_Plugin] " .. lib.msg("配置写入失败", "Config write failed") .. ": " .. tostring(rerr))
+        return
+    end
+    -- Success: drop the backup / 成功：删除备份
+    local removedBak, bberr = os.remove(bak)
+    if not removedBak then
+        print("[SXMY_Plugin] " .. lib.msg("备份文件删除失败", "Failed to remove backup file") .. ": " .. tostring(bberr))
+    end
+    -- Re-read the config so the cache reflects the new state / 重读配置使缓存反映最新状态
+    cached = nil
+    cachedSections = nil
+    lib.getConfig()
+end
+
+-- Normalize a config section to the module's ordered defaults / 按模块有序默认值规范化配置节
+--   - missing keys are inserted at their correct position (default value + comment)
+--   - extra keys (not in defaults) are removed
+--   - keys already present keep the user's value and trailing comment
+--   - duplicate headers from earlier versions are merged; the first value of a conflicting key wins
+-- 缺失键在正确位置插入（默认值+注释）、多余键删除、已有键保留用户值与行尾注释、
+-- 旧版重复节自动合并（冲突键保留第一节的值）
+-- defaults: ordered array of { key = "name", v = value, c = "中文 / English comment" } (c optional)
+-- defaults：有序数组 { key = "名称", v = 值, c = "中文 / English 注释" }（c 可选）
 function lib.ensureSection(section, defaults)
-    local cfg = lib.getConfig()
-    local missing = {}
-    for key, spec in pairs(defaults) do
-        if cfg[section .. "." .. key] == nil then
+    -- Normalize defaults into an ordered list / 将 defaults 规范为有序条目列表
+    local items = {}
+    if type(defaults) == "table" and #defaults > 0 then
+        -- Ordered array format / 有序数组格式
+        for _, spec in ipairs(defaults) do
+            if type(spec) == "table" and spec.key then
+                items[#items + 1] = { key = spec.key, value = spec.v, comment = spec.c }
+            elseif type(spec) == "table" then
+                for k, v in pairs(spec) do
+                    items[#items + 1] = { key = k, value = v }
+                end
+            else
+                items[#items + 1] = { key = spec, value = true }
+            end
+        end
+    else
+        -- Legacy unordered table format, kept for compatibility / 旧版无序表格式（兼容保留）
+        for key, spec in pairs(defaults) do
             local value, comment
             if type(spec) == "table" then
                 value = spec.v
@@ -176,11 +273,11 @@ function lib.ensureSection(section, defaults)
             else
                 value = spec
             end
-            missing[#missing + 1] = { key = key, value = value, comment = comment }
+            items[#items + 1] = { key = key, value = value, comment = comment }
         end
     end
 
-    -- Read the current file, or start from scratch / 读取原文件（不存在则从空开始）
+    -- Read the current file / 读取原文件
     local fh = io.open(CONFIG_PATH, "r")
     local content = ""
     if fh then
@@ -188,126 +285,150 @@ function lib.ensureSection(section, defaults)
         fh:close()
     end
 
-    -- Count the target section headers to detect duplicated sections from earlier versions / 统计目标节标题数（检测旧版产生的重复节）
-    local esc = section:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-    local headerCount = 0
+    local lines = {}
     if content ~= "" then
         for line in (content .. "\n"):gmatch("(.-)\n") do
-            if line:gsub("\r$", ""):match("^%[%s*" .. esc .. "%s*%]$") then
-                headerCount = headerCount + 1
-            end
+            lines[#lines + 1] = line:gsub("\r$", "")
+        end
+        -- Drop trailing empty lines so the block comparison stays stable across runs / 丢弃末尾空行，保证多次运行比较稳定（不会反复重写）
+        while #lines > 0 and lines[#lines] == "" do
+            lines[#lines] = nil
         end
     end
 
-    -- Nothing missing and no duplicate headers to merge: nothing to do / 无缺失键且无重复节需合并：无需处理
-    if #missing == 0 and headerCount <= 1 then
+    -- Locate every [section] header (duplicates may exist from earlier versions) / 定位所有目标节标题（旧版可能重复）
+    local esc = section:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+    local headers = {}
+    for i, line in ipairs(lines) do
+        if line:match("^%[%s*" .. esc .. "%s*%]$") then
+            headers[#headers + 1] = i
+        end
+    end
+
+    -- Section missing: append a new one at the end / 节不存在：文件末尾追加新节
+    if #headers == 0 then
+        local out = {}
+        for i, line in ipairs(lines) do
+            out[#out + 1] = line
+        end
+        if #out > 0 and out[#out] ~= "" then
+            out[#out + 1] = ""
+        end
+        out[#out + 1] = "[" .. section .. "]"
+        for _, item in ipairs(items) do
+            out[#out + 1] = buildRow(item)
+        end
+        writeConfig(out)
         return
     end
 
-    -- Build the lines to add / 构造要添加的键行
-    local newLines = {}
-    for _, item in ipairs(missing) do
-        local line = item.key .. " = " .. formatValue(item.value)
-        if item.comment then
-            line = line .. "  # " .. item.comment
-        end
-        newLines[#newLines + 1] = line
-    end
-
-    -- Rewrite the file: insert missing keys inside the existing section, otherwise append a new section at the end
-    -- Duplicated target sections (from earlier versions) are merged into one; conflicting keys keep the first value
-    -- 整体重写：缺失键插入原节内末尾；节不存在则在文件末尾追加新节
-    -- 旧版本产生的重复节会被自动合并，冲突键保留第一节的值
-    local out = {}
-    if content ~= "" then
-        local currentSection = nil
-        local inserted = false
-        local targetSeen = false -- first [section] header seen / 已见到第一个目标节标题
-        local inFirstBlock = false -- currently inside the first target block / 当前在目标节第一节块内
-        local inDupBlock = false -- currently inside a duplicated target block / 当前在重复的目标节块内
-        local targetKeys = {} -- keys present in the first target block / 第一节块已有的键
-        for line in (content .. "\n"):gmatch("(.-)\n") do
-            local cleanLine = line:gsub("\r$", "")
-            local secName = cleanLine:match("^%[%s*(.-)%s*%]$")
-            if secName then
-                if secName == section and targetSeen then
-                    -- Duplicate target header: skip it, its keys merge into the first block / 跳过重复节标题，键并入第一节
-                    inFirstBlock = false
-                    inDupBlock = true
-                else
-                    if secName == section then
-                        targetSeen = true
-                        inFirstBlock = true
-                        inDupBlock = false
-                    else
-                        inFirstBlock = false
-                        inDupBlock = false
-                    end
-                    -- Insert missing keys at the end of the (first) target block / 在目标节块末尾插入缺失键
-                    if currentSection == section and not inserted then
-                        for _, l in ipairs(newLines) do
-                            out[#out + 1] = l
-                        end
-                        inserted = true
-                    end
-                    currentSection = secName
-                    out[#out + 1] = cleanLine
+    -- Collect keys from every target block (first occurrence wins), keep non-key lines
+    -- 收集所有目标节块的键（首次出现优先），保留非键行（注释、空行）
+    -- Other sections are never touched / 其他节完全不受影响
+    local keyRows = {} -- key -> row / 键 -> 行
+    local preLines = {} -- non-key lines in order / 非键行（注释、空行）按顺序
+    local seen = {}
+    local inTarget = false
+    for _, line in ipairs(lines) do
+        local secName = line:match("^%[%s*(.-)%s*%]$")
+        if secName then
+            inTarget = (secName == section)
+        elseif inTarget then
+            local keyName = line:match("^(%w+)%s*=")
+            if keyName then
+                if not seen[keyName] then
+                    seen[keyName] = true
+                    keyRows[keyName] = line
                 end
             else
-                local keyName = cleanLine:match("^(%w+)%s*=")
-                if inDupBlock and keyName and targetKeys[keyName] then
-                    -- Conflicting key in the duplicate block: keep the first value / 重复节中的冲突键：保留第一节的值
-                else
-                    if inFirstBlock and keyName then
-                        targetKeys[keyName] = true
-                    end
-                    out[#out + 1] = cleanLine
-                end
+                preLines[#preLines + 1] = line
             end
-        end
-        -- The target section is the last one in the file / 目标节是文件最后一个节
-        if not inserted and currentSection == section then
-            for _, l in ipairs(newLines) do
-                out[#out + 1] = l
-            end
-            inserted = true
-        end
-        -- Section not found: append a new section at the end / 节不存在：末尾追加新节
-        if not inserted then
-            if out[#out] ~= "" then
-                out[#out + 1] = ""
-            end
-            out[#out + 1] = "[" .. section .. "]"
-            for _, l in ipairs(newLines) do
-                out[#out + 1] = l
-            end
-        end
-    else
-        -- Empty or missing file: create the section / 空文件或不存在：直接创建节
-        out[#out + 1] = "[" .. section .. "]"
-        for _, l in ipairs(newLines) do
-            out[#out + 1] = l
         end
     end
 
-    -- Write to a temp file then replace, so a failed write never corrupts the config / 写临时文件再替换，写失败不损坏配置
-    local tmp = CONFIG_PATH .. ".tmp"
-    local fw, werr = io.open(tmp, "w")
-    if not fw then
-        print("[SXMY_Plugin] " .. lib.msg("配置写入失败", "Config write failed") .. ": " .. tostring(werr))
-        return
+    -- Rebuild the block in the default order / 按默认顺序重建节块
+    local newBlock = { "[" .. section .. "]" }
+    local changed = false
+    for _, item in ipairs(items) do
+        if keyRows[item.key] then
+            -- Keep the user's row (value + trailing comment) / 保留用户行（值 + 行尾注释）
+            newBlock[#newBlock + 1] = keyRows[item.key]
+        else
+            -- Insert the default row at the correct position / 在正确位置插入默认行
+            newBlock[#newBlock + 1] = buildRow(item)
+            changed = true
+        end
+        keyRows[item.key] = nil
     end
-    fw:write(table.concat(out, "\n"))
-    fw:close()
-    os.remove(CONFIG_PATH)
-    local ok, rerr = os.rename(tmp, CONFIG_PATH)
-    if not ok then
-        print("[SXMY_Plugin] " .. lib.msg("配置写入失败", "Config write failed") .. ": " .. tostring(rerr))
+    -- Keep non-key lines (comments, blanks) at the end of the block so the comparison stays stable / 非键行（注释、空行）保留在节尾，保证比较稳定（不会反复重写）
+    for _, line in ipairs(preLines) do
+        newBlock[#newBlock + 1] = line
     end
-    -- Re-read the config so the cache reflects the new defaults / 重读配置使缓存包含新默认值
-    cached = nil
-    cachedSections = nil
-    lib.getConfig()
+    -- Remaining keys are extras: removed / 剩余键为多余项：删除
+    local extras = 0
+    for _ in pairs(keyRows) do
+        extras = extras + 1
+    end
+    if extras > 0 then
+        changed = true
+        print("[SXMY_Plugin] " .. lib.msg("已移除多余配置项：", "Removed extra config keys: ") .. section)
+    end
+
+    -- Rebuild the whole file: replace the first target block with the normalized one,
+    -- drop duplicate target headers and their rows, never touch other sections
+    -- 整文件重建：第一个目标节替换为规范化块，删除重复的目标节标题及其行，其他节原样保留
+    local out = {}
+    local i = 1
+    local firstHandled = false
+    local skipping = false
+    while i <= #lines do
+        local line = lines[i]
+        local secName = line:match("^%[%s*(.-)%s*%]$")
+        if secName then
+            if secName == section then
+                if firstHandled then
+                    -- Duplicate target header: skip it and its rows / 重复目标节标题：跳过其及后续行
+                    skipping = true
+                else
+                    firstHandled = true
+                    skipping = false
+                    for _, l in ipairs(newBlock) do
+                        out[#out + 1] = l
+                    end
+                    -- Jump past the original first block / 跳过第一个目标节的原始行
+                    i = i + 1
+                    while i <= #lines and not lines[i]:match("^%[%s*(.-)%s*%]$") do
+                        i = i + 1
+                    end
+                    i = i - 1 -- the while loop below increments to the next header / 循环末尾 i+1 跳到下一标题
+                end
+            else
+                skipping = false
+                out[#out + 1] = line
+            end
+        else
+            if not skipping then
+                out[#out + 1] = line
+            end
+        end
+        i = i + 1
+    end
+
+    -- Compare with the original file / 与原文件比较
+    local same = #out == #lines
+    if same then
+        for j = 1, #out do
+            if out[j] ~= lines[j] then
+                same = false
+                break
+            end
+        end
+    end
+    if same and not changed then
+        return -- already normalized / 已规范化，无需写入
+    end
+
+    writeConfig(out)
 end
 
 return lib -- module export / 模块导出

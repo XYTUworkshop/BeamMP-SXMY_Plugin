@@ -9,8 +9,10 @@
 
 local lib = require("modules.lib") -- shared config library / 共享配置库
 
--- 本模块配置：缺失键自动追加（含中英注释），用户已有配置不覆盖 / this module's own config: missing keys appended with comments, user settings kept
-lib.ensureSection("VehicleTag", { enable = { v = true, c = "车辆标签功能开关（需 Resources/Client 的 SXMYVehicleTag mod）/ Vehicle tag module switch (requires the SXMYVehicleTag client mod)" } })
+-- 本模块配置：按默认顺序规范化（缺失键插入、多余项删除，用户已有配置不覆盖）/ this module's config: normalized to the default order (missing keys inserted, extras removed, user settings kept)
+lib.ensureSection("VehicleTag", {
+    { key = "enable", v = true, c = "车辆标签功能开关（需 Resources/Client 的 SXMYVehicleTag mod）/ Vehicle tag module switch (requires the SXMYVehicleTag client mod)" },
+})
 -- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
 if not lib.get("VehicleTag", "enable", true) then
     print("[SXMY_Plugin] " .. lib.msg("VehicleTag 已禁用", "VehicleTag disabled"))

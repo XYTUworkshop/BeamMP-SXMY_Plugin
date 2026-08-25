@@ -39,7 +39,9 @@ if configMissing then
 end
 
 -- Ensure the General config section exists (plugin-wide defaults) / 确保 General 配置节存在（插件级默认值）
-lib.ensureSection("General", { language = "zh" })
+lib.ensureSection("General", {
+    { key = "language", v = "zh", c = "插件日志语言（\"zh\" 中文，\"en\" 英文）/ Plugin log language (\"zh\" Chinese, \"en\" English)" },
+})
 
 -- 加载全部模块：扫描 modules/ 目录，每个模块自行生成配置并按自身 enable 决定是否启用
 -- Load every module: scan the modules folder; each module writes its own config and checks its own enable

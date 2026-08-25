@@ -11,10 +11,10 @@ local lib = require("modules.lib") -- shared config library / 共享配置库
 
 -- 本模块配置：缺失键自动追加（含中英注释），用户已有配置不覆盖 / this module's own config: missing keys appended with comments, user settings kept
 lib.ensureSection("WelcomeMsg", {
-    enable = { v = true, c = "进服信息功能开关 / Welcome message module switch" },
-    delay = { v = 12, c = "发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync" },
-    showtest = { v = true, c = "启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)" },
-    text = { v = "欢迎来到SXMY \n请使用[/n name]标记自己的名字 \nWelcome to SXMY", c = "进服信息文本，支持所有语言，\\n 换行分多条发送 / Welcome text, any language, \\n splits into multiple messages" },
+    { key = "enable", v = true, c = "进服信息功能开关 / Welcome message module switch" },
+    { key = "delay", v = 12, c = "发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync" },
+    { key = "showtest", v = true, c = "启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)" },
+    { key = "text", v = "欢迎来到SXMY \n请使用[/n name]标记自己的名字 \nWelcome to SXMY", c = "进服信息文本，支持所有语言，\\n 换行分多条发送 / Welcome text, any language, \\n splits into multiple messages" },
 })
 -- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
 if not lib.get("WelcomeMsg", "enable", true) then

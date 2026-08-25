@@ -10,8 +10,10 @@
 
 local lib = require("modules.lib") -- shared config library / 共享配置库
 
--- 本模块配置：缺失键自动追加（含中英注释），用户已有配置不覆盖 / this module's own config: missing keys appended with comments, user settings kept
-lib.ensureSection("NameTag", { enable = { v = true, c = "聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)" } })
+-- 本模块配置：按默认顺序规范化（缺失键插入、多余项删除，用户已有配置不覆盖）/ this module's config: normalized to the default order (missing keys inserted, extras removed, user settings kept)
+lib.ensureSection("NameTag", {
+    { key = "enable", v = true, c = "聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)" },
+})
 -- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
 if not lib.get("NameTag", "enable", true) then
     print("[SXMY_Plugin] " .. lib.msg("NameTag 已禁用", "NameTag disabled"))

@@ -59,7 +59,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 
 The config file is at `Resources/Server/BeamMP-SXMY_Plugin/config.toml`; a **server restart** is required after changes.
 
-**Auto-generated config**: each feature module generates its **own** config section on load — missing keys are appended with defaults (and zh/en comments) to `config.toml`. **Removing a module file (i.e. dropping that feature) stops its config section from being generated**; your custom settings (e.g. welcome text, password rules) are never overwritten. A fresh install auto-generates the full config on first start.
+**Auto-generated config (normalized)**: each feature module generates its **own** config section — on every start `config.toml` is **normalized**: keys inside each section are kept in a **fixed order** (`enable` always first, related options grouped together); missing keys are inserted **at their correct position** with defaults (and zh/en comments); **extra keys not defined by a module are removed** (a console hint is printed); duplicate sections from earlier versions are **merged automatically** (a conflicting key keeps its first value). **Removing a module file (i.e. dropping that feature) stops its config section from being generated**; the **values** you changed (e.g. welcome text, password rules, toggles) are never overwritten, and normalization only touches each module's own section — other sections and file structure stay untouched. A fresh install auto-generates the full config on first start.
 
 ```toml
 [General]

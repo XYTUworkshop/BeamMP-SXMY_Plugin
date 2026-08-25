@@ -10,12 +10,12 @@ local lib = require("modules.lib") -- shared config library / 共享配置库
 
 -- 本模块配置：缺失键自动追加（含中英注释），用户已有配置不覆盖 / this module's own config: missing keys appended with comments, user settings kept
 lib.ensureSection("Auth", {
-    enable = { v = true, c = "身份认证功能开关 / Auth module switch" },
-    passwdlen = { v = 8, c = "密码最小长度（位）/ Minimum password length (characters)" },
-    passwdcase = { v = false, c = "是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)" },
-    passwdsymbol = { v = false, c = "是否要求特殊符号（不要求也可使用）/ Require special characters (optional)" },
-    maxRegsPerIP = { v = 3, c = "单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)" },
-    LoginMsg = { v = "欢迎 <name> 登录服务器", c = "登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled" },
+    { key = "enable", v = true, c = "身份认证功能开关 / Auth module switch" },
+    { key = "passwdlen", v = 8, c = "密码最小长度（位）/ Minimum password length (characters)" },
+    { key = "passwdcase", v = false, c = "是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)" },
+    { key = "passwdsymbol", v = false, c = "是否要求特殊符号（不要求也可使用）/ Require special characters (optional)" },
+    { key = "maxRegsPerIP", v = 3, c = "单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)" },
+    { key = "LoginMsg", v = "欢迎 <name> 登录服务器", c = "登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled" },
 })
 -- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
 if not lib.get("Auth", "enable", true) then
