@@ -9,7 +9,7 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 - **Modular architecture**: `main.lua` acts as the main loader, each feature lives in its own file and can be toggled in the config file.
 - **Auto-discovered modules**: the module list is read automatically from `config.toml`, no code changes needed to add features.
 - **Welcome message (WelcomeMsg)**: sends the configured welcome text to a player on join via private message, supports any language, `\n` splits into multiple messages.
-- **Auth**: `/reg` register, `/login` login, PBKDF2 slow-hash password storage; unauthenticated players cannot chat or spawn vehicles; password rules configurable.
+- **Auth**: `/reg` register, `/login` log in, `/logout` log out, PBKDF2 slow-hash password storage; unauthenticated players cannot chat or spawn vehicles; logged-in players cannot re-register/log in again (must `/logout` first); password rules configurable.
 - **NameTag**: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically.
 - **VehicleTag**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMYVehicleTag` client mod.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
@@ -51,6 +51,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [time] [LUA] [SXMY_Loginfo] Server map: gridmap
 [time] [LUA] [SXMY_WelcomeMsg] Welcome Text :
 [time] [LUA] [SXMY_WelcomeMsg] Welcome to SXMY
+[time] [LUA] [SXMY_WelcomeMsg] Enjoy :D
 ```
 
 (`Loaded X/Y features`: X = loaded, Y = enabled in config; the `showtest` startup test text prints only once)
@@ -82,7 +83,7 @@ enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMYVeh
 enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
 showtest = true    # 启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)
-text = "欢迎来到SXMY \n请使用[/n name]标记自己的名字 \nWelcome to SXMY"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
+text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
 
 [loginfo]
 enable = true          # 服务器信息日志功能开关 / Server info log module switch
@@ -100,7 +101,8 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdsymbol` | Require a special character in the password |
 | `[Auth].maxRegsPerIP` | Max registrations per IP (0 = unlimited), default 3 |
 | `[Auth].pbkdf2Iter` | PBKDF2 slow-hash iterations, default 1000 (higher = safer but slower logins) |
-| `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced with the nickname, empty disables it |
+| `[Auth].nickLength` | Max nickname length (registration limit and listSXMY column width), default 15 |
+| `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced by the nickname, empty = disabled |
 | `[NameTag].enable` | Enable/disable the chat nickname feature |
 | `[VehicleTag].enable` | Enable/disable the vehicle tag feature (requires `Resources/Client/SXMYVehicleTag.zip`) |
 | `[WelcomeMsg].enable` | Enable/disable the welcome message feature |
@@ -133,7 +135,8 @@ Type in the in-game chat:
 | Command | Description |
 |---|---|
 | `/reg nickname password confirmpassword` | Register and log in |
-| `/login nickname password` | Log in |
+| `/login nickname password` | Log in (`/logout` first if already logged in) |
+| `/logout` | Log out (clears the login state and vehicle-tag nickname) |
 | `/n nickname` | Set the chat nickname (only when Auth is disabled) |
 
 - Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.
@@ -145,6 +148,7 @@ Type in the in-game chat:
 | Command | Description |
 |---|---|
 | `reloadSXMY` | Hot-reload the plugin (type in the server console). Apply plugin file changes without restarting the server; note: players' login states are reset on reload and they must log in again. |
+| `listSXMY` | Print the online-player table: nickname / player name / car count / PID (column width driven by `[Auth].nickLength`) |
 
 ## Security Notes
 

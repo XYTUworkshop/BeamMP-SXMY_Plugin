@@ -9,7 +9,7 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **模块化架构**：`main.lua` 作为主加载器，每个功能一个独立文件，可在配置文件中单独开关
 - **自动发现模块**：模块列表自动从 `config.toml` 读取，新增功能无需修改任何代码
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
-- **身份认证（Auth）**：`/reg` 注册、`/login` 登录，密码 PBKDF2 慢哈希存储；未登录玩家聊天不可见、不可刷车；密码规则（长度/大小写/特殊符号）可配置
+- **身份认证（Auth）**：`/reg` 注册、`/login` 登录、`/logout` 退出，密码 PBKDF2 慢哈希存储；未登录玩家聊天不可见、不可刷车；已登录玩家不可重复注册/登录（需先 `/logout`）；密码规则（长度/大小写/特殊符号）可配置
 - **聊天昵称（NameTag）**：未启用 Auth 时玩家用 `/n 名字` 设置聊天昵称，消息带 `[昵称]` 前缀；启用 Auth 时自动使用登录账号昵称
 - **车辆标签（VehicleTag）**：玩家登录或设置 `/n` 昵称后，其所有车辆上方（含玩家自己的车）显示昵称标签，并隐藏 BeamMP 官方标签；需要随服务器下发的 `SXMYVehicleTag` 客户端 mod
 - **中英日志切换**：`[General] language` 可设置 `zh` 或 `en`，插件控制台日志只输出所选语言
@@ -50,7 +50,8 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [时间] [LUA] [SXMY_Loginfo] 服务器版本: 3.9.3
 [时间] [LUA] [SXMY_Loginfo] 服务器地图: gridmap
 [时间] [LUA] [SXMY_WelcomeMsg] 欢迎文本：
-[时间] [LUA] [SXMY_WelcomeMsg] 欢迎来到SXMY
+[时间] [LUA] [SXMY_WelcomeMsg] Welcome to SXMY
+[时间] [LUA] [SXMY_WelcomeMsg] Enjoy :D
 ```
 
 （`已加载X/Y个功能`：X 为成功加载数，Y 为配置中启用的模块数；`showtest` 启动测试文本仅输出一次）
@@ -79,7 +80,7 @@ enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录
 enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
 showtest = true    # 启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)
-text = "欢迎来到SXMY \n请使用[/n name]标记自己的名字 \nWelcome to SXMY"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
+text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
 
 [loginfo]
 enable = true          # 服务器信息日志功能开关 / Server info log module switch
@@ -97,6 +98,7 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].passwdsymbol` | 是否要求密码包含特殊符号 |
 | `[Auth].maxRegsPerIP` | 单个 IP 最多注册账户数（0 不限制），默认 3 |
 | `[Auth].pbkdf2Iter` | PBKDF2 慢哈希迭代次数，默认 1000（越大越安全但登录越慢）|
+| `[Auth].nickLength` | 昵称最大字符数（注册限制与 listSXMY 表格列宽），默认 15 |
 | `[Auth].LoginMsg` | 登录成功广播消息（`/say`），`<name>` 替换为玩家昵称，留空则不发送 |
 | `[NameTag].enable` | 启用/禁用聊天昵称功能 |
 | `[VehicleTag].enable` | 启用/禁用车辆标签功能（需 `Resources/Client/SXMYVehicleTag.zip`） |
@@ -132,18 +134,20 @@ enable = true
 | 命令 | 说明 |
 |---|---|
 | `/reg 昵称 密码 确认密码` | 注册并登录 |
-| `/login 昵称 密码` | 登录 |
+| `/login 昵称 密码` | 登录（已登录时需先 `/logout`）|
+| `/logout` | 退出登录（清除登录状态与车辆标签昵称）|
 | `/n 昵称` | 设置聊天昵称（仅未启用 Auth 时） |
 
 - 未登录玩家：聊天消息他人不可见，**不可刷载具**（含编辑/替换车辆）；每 5 秒私信提示注册/登录；登录失败 5 次锁定 60 秒
 - 已登录玩家：`/` 开头的消息他人不可见（命令不广播）
-- 账户保存于插件根目录 `users.txt`，密码为 SHA-256 哈希
+- 账户保存于插件根目录 `users.txt`，密码为 PBKDF2 慢哈希
 
 ## 控制台命令
 
 | 命令 | 说明 |
 |---|---|
 | `reloadSXMY` | 热重载插件（在服务器控制台输入）。修改插件文件后无需重启服务器即可生效；注意：重载后玩家的登录状态会重置，需重新登录 |
+| `listSXMY` | 输出在线玩家表格：昵称 / 玩家名 / 车辆数 / PID（列宽由 `[Auth].nickLength` 决定） |
 
 ## 安全注意事项
 

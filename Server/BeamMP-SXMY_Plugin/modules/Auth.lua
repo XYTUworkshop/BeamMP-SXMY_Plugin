@@ -16,6 +16,7 @@ lib.ensureSection("Auth", {
     { key = "passwdsymbol", v = false, c = "是否要求特殊符号（不要求也可使用）/ Require special characters (optional)" },
     { key = "maxRegsPerIP", v = 3, c = "单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)" },
     { key = "pbkdf2Iter", v = 1000, c = "PBKDF2 慢哈希迭代次数（越大越安全但登录越慢）/ PBKDF2 slow-hash iterations (higher = safer but slower logins)" },
+    { key = "nickLength", v = 15, c = "昵称最大字符数（注册限制与 listSXMY 表格列宽）/ Max nickname length (registration limit and listSXMY column width)" },
     { key = "LoginMsg", v = "欢迎 <name> 登录服务器", c = "登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled" },
 })
 -- 未启用时退出，不注册任何事件 / exit early when disabled, no events are registered
@@ -29,6 +30,7 @@ local PROMPT_INTERVAL = 5 -- prompt interval in seconds / 提示间隔秒数
 local PROMPT_START_DELAY = 15 -- delay before the first prompt, after the welcome message / 首次提示延迟（欢迎消息之后）
 local MAX_LOGIN_FAILS = 5 -- max consecutive login failures before locking / 连续登录失败锁定阈值
 local LOGIN_LOCK_SECONDS = 60 -- lock duration after too many failures / 登录锁定秒数
+
 
 -- ==================== SHA-256 (pure Lua, Lua 5.3 bitwise ops) / 纯 Lua SHA-256 ====================
 local K = {
@@ -410,8 +412,30 @@ local function checkPassword(player_id, passwd)
     return true
 end
 
+-- Handle the /logout command: clear the login state / 处理 /logout 命令：清除登录状态
+local function handleLogout(player_id)
+    local st = players[player_id]
+    if not (st and st.loggedIn) then
+        notify(player_id, "尚未登录", "You are not logged in")
+        return
+    end
+    -- Keep the record (joinedAt drives the periodic prompts), just clear the login state and nickname / 保留记录（joinedAt 用于周期提示），仅清除登录状态与昵称
+    players[player_id] = { loggedIn = false, joinedAt = os.time(), lastPrompt = os.time() }
+    notify(player_id, "已退出登录", "Logged out")
+    -- Clear the vehicle-tag nickname if enabled / 若启用车牌标签系统则清除昵称
+    if type(SXMY_VehicleTag_Update) == "function" then
+        SXMY_VehicleTag_Update(player_id, nil, true)
+    end
+end
+
 -- Handle the /reg command / 处理 /reg 命令
 local function handleRegister(player_id, args)
+    -- Already-logged-in players must /logout first before registering again / 已登录玩家需先 /logout 才能重新注册
+    local st0 = players[player_id]
+    if st0 and st0.loggedIn then
+        notify(player_id, "您已登录 如需重新注册请先使用/logout", "You are already logged in, use /logout first")
+        return
+    end
     if #args ~= 3 then
         notify(player_id, "请使用/reg 昵称 密码 确认密码 进行注册", "Please use /reg nickname password confirmpassword to register")
         return
@@ -423,8 +447,9 @@ local function handleRegister(player_id, args)
         return
     end
     -- Length limit, the nickname flows into the client vehicle tag API / 长度限制（昵称会流向客户端车辆标签 API）
-    if #nick > 20 then
-        notify(player_id, "昵称过长 最多20个字符", "Nickname too long, max 20 characters")
+    local maxNick = lib.get("Auth", "nickLength", 15)
+    if #nick > maxNick then
+        notify(player_id, ("昵称过长 最多%d个字符"):format(maxNick), ("Nickname too long, max %d characters"):format(maxNick))
         return
     end
     if passwd ~= confirm then
@@ -462,6 +487,12 @@ end
 
 -- Handle the /login command with brute-force protection / 处理 /login 命令（含防暴力破解）
 local function handleLogin(player_id, args)
+    -- Already-logged-in players must /logout first before logging in again / 已登录玩家需先 /logout 才能重新登录
+    local st0 = players[player_id]
+    if st0 and st0.loggedIn then
+        notify(player_id, "您已登录 如需重新登录请先使用/logout", "You are already logged in, use /logout first")
+        return
+    end
     if #args ~= 2 then
         notify(player_id, "请使用/login 昵称 密码 进行登录", "Please use /login nickname password to log in")
         return
@@ -537,6 +568,8 @@ function SXMY_Auth_onChatMessage(player_id, player_name, message)
             handleRegister(player_id, splitArgs(message:sub(6)))
         elseif message == "/login" or message:sub(1, 7) == "/login " then
             handleLogin(player_id, splitArgs(message:sub(8)))
+        elseif message == "/logout" or message:sub(1, 8) == "/logout " then
+            handleLogout(player_id)
         end
         return 1
     end
@@ -610,6 +643,33 @@ function SXMY_Auth_onPlayerDisconnect(player_id)
     players[player_id] = nil
 end
 
+-- 控制台命令：listSXMY —— 输出对齐的在线玩家表格 / console command: listSXMY — print an aligned online-player table
+-- 列宽：NickName = 昵称限制+2，Name = 15+2，Car 与 ID 右对齐 2 位、间隔 2 空格 / columns: NickName = nick limit + 2, Name = 15 + 2, Car/ID right-aligned 2-wide with 2 spaces
+function SXMY_Auth_onConsoleInput(command)
+    if not command or not command:match("^listSXMY%s*$") then
+        return nil
+    end
+    local maxNick = lib.get("Auth", "nickLength", 15)
+    local nickCol = maxNick + 2
+    local nameCol = 17 -- 15 chars + 2 separator spaces / 15 字符 + 2 个分隔空格
+    print("[SXMY_Auth] " .. "NickName" .. (" "):rep(nickCol - 8) .. "Name" .. (" "):rep(nameCol - 4) .. "Car  ID")
+    for pid, name in pairs(MP.GetPlayers()) do
+        local nick = players[pid] and players[pid].nick or "-"
+        local cars = 0
+        local ok, vehs = pcall(MP.GetPlayerVehicles, pid)
+        if ok and type(vehs) == "table" then
+            -- The API returns a map (vehicleID -> data), so count entries with pairs, not # / 该 API 返回字典（vehicleID -> data），用 pairs 计数而非 #
+            for _ in pairs(vehs) do
+                cars = cars + 1
+            end
+        end
+        print("[SXMY_Auth] " .. nick .. (" "):rep(nickCol - #nick) .. name .. (" "):rep(nameCol - #name) .. string.format("%2d", cars) .. "  " .. string.format("%2d", pid))
+    end
+    -- Return an empty string (not nil): the console treats nil as "not handled" and prints "Unknown command";
+    -- any non-nil value suppresses that and an empty string produces no extra output / 返回空串而非 nil：控制台将 nil 视为"未处理"并打印 Unknown command；非 nil 值可阻止，空串不产生额外输出
+    return ""
+end
+
 -- Initialize and register events / 初始化并注册事件
 loadAccounts()
 MP.RegisterEvent("onPlayerJoin", "SXMY_Auth_onPlayerJoin")
@@ -617,5 +677,6 @@ MP.RegisterEvent("onPlayerDisconnect", "SXMY_Auth_onPlayerDisconnect")
 MP.RegisterEvent("onChatMessage", "SXMY_Auth_onChatMessage")
 MP.RegisterEvent("onVehicleSpawn", "SXMY_Auth_onVehicleSpawn")
 MP.RegisterEvent("onVehicleEdited", "SXMY_Auth_onVehicleEdited")
+MP.RegisterEvent("onConsoleInput", "SXMY_Auth_onConsoleInput")
 MP.RegisterEvent("SXMY_Auth_Tick", "SXMY_Auth_Tick")
 MP.CreateEventTimer("SXMY_Auth_Tick", 1000)
