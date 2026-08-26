@@ -7,11 +7,13 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 ## 功能特性
 
 - **模块化架构**：`main.lua` 作为主加载器，每个功能一个独立文件，可在配置文件中单独开关
-- **自动发现模块**：模块列表自动从 `config.toml` 读取，新增功能无需修改任何代码
+- **自动发现模块**：模块列表自动从 `modules/` 目录扫描发现，新增功能无需修改任何代码；每个模块自行生成自己的配置节（无配置键时默认启用）
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
 - **身份认证（Auth）**：`/reg` 注册、`/login` 登录、`/logout` 退出，密码 PBKDF2 慢哈希存储；未登录玩家聊天不可见、不可刷车；已登录玩家不可重复注册/登录（需先 `/logout`）；密码规则（长度/大小写/特殊符号）可配置
 - **管理员账号（OPAuth）**：需启用 Auth；服务器控制台 `opSXMY 昵称` 设置管理员（记录于 `opusers.txt`）；管理员可在聊天框使用映射命令（默认 `/op`、`/opSXMY`），执行结果私信返回；非管理员使用提示「权限不足」
   OPAuth: requires Auth; the server console command `opSXMY nickname` grants admin (stored in `opusers.txt`); admins can use the mapped chat commands (default `/op`, `/opSXMY`) with private-message results; non-admins get "Permission denied"
+- **玩家封禁（PlayerBan）**：需启用 Auth；`banSXMY 昵称 时长 理由` 封禁登录权限、`banipSXMY 昵称 时长 理由` 封禁其当前 IP；被封禁者在注册/登录时被踢出（含剩余时间与原因），注册账号不保存；记录存于 `banusers.txt`
+  PlayerBan: requires Auth; `banSXMY nickname duration reason` bans the login permission, `banipSXMY nickname duration reason` bans the current IP; banned players are kicked on register/login (with remaining time + reason) and their registration is not saved; records stored in `banusers.txt`
 - **聊天昵称（NameTag）**：未启用 Auth 时玩家用 `/n 名字` 设置聊天昵称，消息带 `[昵称]` 前缀；启用 Auth 时自动使用登录账号昵称
 - **车辆标签（VehicleTag）**：玩家登录或设置 `/n` 昵称后，其所有车辆上方（含玩家自己的车）显示昵称标签，并隐藏 BeamMP 官方标签；需要随服务器下发的 `SXMYVehicleTag` 客户端 mod
 - **中英日志切换**：`[General] language` 可设置 `zh` 或 `en`，插件控制台日志只输出所选语言
@@ -29,6 +31,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── lib.lua          # 共享配置解析库（配置解析、语言切换、模块发现）
     ├── Auth.lua         # 身份认证功能（注册/登录/拦截）
     ├── OPAuth.lua       # 管理员账号功能（需启用 Auth）
+    ├── PlayerBan.lua    # 玩家封禁功能（需启用 Auth）
     ├── NameTag.lua      # 聊天昵称功能
     ├── VehicleTag.lua   # 车辆标签功能（需客户端 mod）
     ├── WelcomeMsg.lua   # 进服信息功能
@@ -57,7 +60,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [时间] [LUA] [SXMY_WelcomeMsg] Enjoy :D
 ```
 
-（`已加载X/Y个功能`：X 为成功加载数，Y 为配置中启用的模块数；`showtest` 启动测试文本仅输出一次）
+（`已加载X/Y个功能`：X 为已启用且成功加载的模块数，Y 为 `modules/` 中存在的模块文件总数；`showtest` 启动测试文本仅输出一次）
 
 ## 配置说明
 
@@ -74,26 +77,35 @@ enable = true          # 身份认证功能开关 / Auth module switch
 passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
 passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
 passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
+maxRegsPerIP = 3       # 单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)
+pbkdf2Iter = 1000      # PBKDF2 慢哈希迭代次数（越大越安全但登录越慢）/ PBKDF2 slow-hash iterations (higher = safer but slower logins)
+nickLength = 15        # 昵称最大字符数（注册限制与 listSXMY 表格列宽）/ Max nickname length (registration limit and listSXMY column width)
 LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
 
-[OPAuth]
-enable = false                  # 管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)
-command = ["op-opSXMY", "opSXMY-opSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+[loginfo]
+enable = true          # 服务器信息日志功能开关 / Server info log module switch
+startTime = true       # 显示服务器启动时间 / Show server start time
+serverVersion = true   # 显示服务器版本 / Show server version
+serverMap = true       # 显示服务器地图（读取 ServerConfig.toml）/ Show server map (read from ServerConfig.toml)
 
 [NameTag]
 enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
+
+[OPAuth]
+enable = false                  # 管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)
+command = ["reload-reloadSXMY", "list-listSXMY", "op-opSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+
+[PlayerBan]
+enable = true      # 玩家封禁功能开关（需启用 Auth）/ Player ban module switch (requires Auth)
+
+[VehicleTag]
+enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMYVehicleTag mod）/ Vehicle tag module switch (requires the SXMYVehicleTag client mod)
 
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
 showtest = true    # 启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)
 text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
-
-[loginfo]
-enable = true          # 服务器信息日志功能开关 / Server info log module switch
-startTime = true       # 显示服务器启动时间 / Show server start time
-serverVersion = true   # 显示服务器版本 / Show server version
-serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / Show server map (read from ServerConfig.toml)
 ```
 
 | 配置项 | 说明 |
@@ -108,9 +120,10 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].nickLength` | 昵称最大字符数（注册限制与 listSXMY 表格列宽），默认 15 |
 | `[Auth].LoginMsg` | 登录成功广播消息（`/say`），`<name>` 替换为玩家昵称，留空则不发送 |
 | `[OPAuth].enable` | 启用/禁用管理员账号功能（需同时启用 Auth）|
-| `[OPAuth].command` | 管理员聊天命令-服务端命令映射数组：`["玩家命令-服务端命令", ...]`，玩家命令带 `/` |
+| `[OPAuth].command` | 管理员聊天命令-服务端命令映射数组：`["玩家命令-服务端命令", ...]`，玩家命令带 `/`；默认 `["reload-reloadSXMY", "list-listSXMY", "op-opSXMY"]`，可自行添加 `"ban-banSXMY"`、`"banip-banipSXMY"`、`"unban-unbanSXMY"` 等 |
+| `[PlayerBan].enable` | 玩家封禁功能开关（需启用 Auth）|
 | `[NameTag].enable` | 启用/禁用聊天昵称功能 |
-| `[VehicleTag].enable` | 启用/禁用车辆标签功能（需 `Resources/Client/SXMYVehicleTag.zip`） |
+| `[VehicleTag].enable` | 启用/禁用车辆标签功能（需 `Resources/Client/SXMY-client.zip`） |
 | `[WelcomeMsg].enable` | 启用/禁用进服信息功能 |
 | `[WelcomeMsg].delay` | 发送延迟（秒），等待玩家同步完成，默认 12 |
 | `[WelcomeMsg].showtest` | 启动时显示欢迎文本测试（在插件与 loginfo 输出后） |
@@ -148,8 +161,15 @@ enable = true
 | `/n 昵称` | 设置聊天昵称（仅未启用 Auth 时） |
 | `/op 昵称` | 管理员命令：将已注册昵称设为管理员（映射 `opSXMY`，**默认映射**）|
 | `/opSXMY 昵称` | 管理员命令：同上（`opSXMY` 的另一个默认玩家命令，**默认映射**）|
+| `/ban 昵称 时长 理由` | 管理员命令：封禁昵称登录权限（映射 `banSXMY`，需在 `command` 中添加 `"ban-banSXMY"`）|
+| `/banip 昵称 时长 理由` | 管理员命令：封禁昵称当前 IP（映射 `banipSXMY`，需在 `command` 中添加 `"banip-banipSXMY"`）|
+| `/unban 昵称` 或 `/unban ip IP` | 管理员命令：解除封禁（映射 `unbanSXMY`，需在 `command` 中添加 `"unban-unbanSXMY"`）|
 | `/list` | 管理员命令：私信返回在线玩家表格（映射 `listSXMY`，需在 `command` 中添加 `"list-listSXMY"`）|
 | `/reload` | 管理员命令：热重载插件（映射 `reloadSXMY`，需在 `command` 中添加 `"reload-reloadSXMY"`）|
+
+- 封禁时长格式：`<数量><单位>`，`m` 分钟、`h` 小时、`d` 天、`M` 月（30 天，大写区分分钟）、`y` 年（365 天）；如 `100m`（1 小时 40 分）、`5d`
+- 被封禁者在**注册或登录**时被踢出，提示「你在此服务器已被封禁 / 剩余时间：Xd Xh Xm / 原因：xxx」；被 `banip` 封禁的 IP 上任何账号（含新注册）都会被踢，且注册的账号不会保存
+- 封禁记录存于插件根目录 `banusers.txt`（与 `users.txt` 同目录），每行格式：`IP/nick 解封时间(YYYYMMDDHHMM) 原因`，如 `nick:Tangzixy 202608091123 speeding`、`ip:1.2.3.4 202608091123`；服务器每次启动都会重新读取，登录/注册时若未到解封时间即被踢出并显示剩余时间；旧版时间戳格式（`nick:xx = 1787000000:原因`）仍可自动读取
 
 - OPAuth 命令仅对**已登录且被设为管理员**的玩家生效，其他人使用私信提示「权限不足」
 - **不支持映射官方服务端命令**（如 `exit`）：插件无法注入服务器控制台命令，外部强杀进程不优雅
@@ -165,6 +185,9 @@ enable = true
 |---|---|
 | `reloadSXMY` | 热重载插件（在服务器控制台输入）。修改插件文件后无需重启服务器即可生效；注意：重载后玩家的登录状态会重置，需重新登录 |
 | `listSXMY` | 输出在线玩家表格：昵称 / 玩家名 / 车辆数 / PID（列宽由 `[Auth].nickLength` 决定） |
+| `banSXMY 昵称 时长 理由` | 封禁昵称登录权限（`banusers.txt`，需启用 PlayerBan）|
+| `banipSXMY 昵称 时长 理由` | 封禁昵称当前使用的 IP（需启用 PlayerBan）|
+| `unbanSXMY 昵称` / `unbanSXMY ip IP` | 解除昵称或 IP 封禁（需启用 PlayerBan）|
 | `opSXMY 昵称` | 将已注册昵称设为管理员（记录于 `opusers.txt`，需启用 OPAuth）|
 
 ## 安全注意事项
@@ -178,7 +201,7 @@ enable = true
 
 - **修改 config.toml 后不生效？** 需要重启服务器，config.toml 仅在启动时读取。
 - **如何切换日志语言？** 将 `config.toml` 中 `[General] language` 改为 `"en"` 或 `"zh"` 后重启。
-- **新增功能模块？** 在 `modules/` 下新建 `.lua` 文件，并在 `config.toml` 中添加对应的 `[模块名]` 节与 `enable` 开关即可。`main.lua` 会自动发现并加载所有已启用的模块，无需修改任何代码。
+- **新增功能模块？** 在 `modules/` 下新建 `.lua` 文件即可（无需修改 `config.toml`，无配置键时模块默认启用并自动生成自己的配置节）；如需禁用，在配置节中设 `enable = false` 后重启。
 
 ## 许可证
 

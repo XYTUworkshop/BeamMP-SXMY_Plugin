@@ -448,6 +448,10 @@ local function handleRegister(player_id, args)
         return
     end
     local nick, passwd, confirm = args[1], args[2], args[3]
+    -- Ban check hook (PlayerBan module): kicks when the nickname or IP is banned, and the account is NOT saved / 封禁检查钩子（PlayerBan 模块）：昵称或 IP 被封禁则踢出，且不保存账号
+    if type(SXMY_PlayerBan_Check) == "function" and SXMY_PlayerBan_Check(player_id, nick, getPlayerIp(player_id)) then
+        return
+    end
     -- Nickname limited to letters, digits and underscores to keep the file format safe / 昵称仅限字母数字下划线以保持文件格式安全
     if not nick:match("^[%w_]+$") then
         notify(player_id, "昵称只能包含字母、数字和下划线", "Nickname may only contain letters, digits and underscores")
@@ -492,6 +496,19 @@ local function handleRegister(player_id, args)
     end
 end
 
+-- 供 PlayerBan 使用：按登录昵称反查在线玩家 id / find the online player id by a logged-in nickname (used by PlayerBan)
+function SXMY_Auth_GetPlayerIdByNick(nick)
+    if type(nick) ~= "string" then
+        return nil
+    end
+    for pid, st in pairs(players) do
+        if st.loggedIn and st.nick == nick then
+            return pid
+        end
+    end
+    return nil
+end
+
 -- Handle the /login command with brute-force protection / 处理 /login 命令（含防暴力破解）
 local function handleLogin(player_id, args)
     -- Already-logged-in players must /logout first before logging in again / 已登录玩家需先 /logout 才能重新登录
@@ -513,6 +530,10 @@ local function handleLogin(player_id, args)
         return
     end
     local nick, passwd = args[1], args[2]
+    -- Ban check hook (PlayerBan module): kicks when the nickname or IP is banned / 封禁检查钩子（PlayerBan 模块）：昵称或 IP 被封禁则踢出
+    if type(SXMY_PlayerBan_Check) == "function" and SXMY_PlayerBan_Check(player_id, nick, getPlayerIp(player_id)) then
+        return
+    end
     local stored = accounts[nick]
     if stored then
         -- New format "pbkdf2$salt$iter$hex" or legacy "salt$sha256" / plain sha256 / 新格式 pbkdf2$salt$iter$hex 或旧格式 salt$sha256 / 纯 sha256

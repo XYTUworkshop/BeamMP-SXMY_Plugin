@@ -7,12 +7,13 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 ## Features
 
 - **Modular architecture**: `main.lua` acts as the main loader, each feature lives in its own file and can be toggled in the config file.
-- **Auto-discovered modules**: the module list is read automatically from `config.toml`, no code changes needed to add features.
+- **Auto-discovered modules**: the module list is scanned from the `modules/` folder, no code changes needed to add features; each module generates its own config section (enabled by default when no config key exists).
 - **Welcome message (WelcomeMsg)**: sends the configured welcome text to a player on join via private message, supports any language, `\n` splits into multiple messages.
 - **Auth**: `/reg` register, `/login` log in, `/logout` log out, PBKDF2 slow-hash password storage; unauthenticated players cannot chat or spawn vehicles; logged-in players cannot re-register/log in again (must `/logout` first); password rules configurable.
+- **PlayerBan**: requires Auth; `banSXMY nickname duration reason` bans the login permission, `banipSXMY nickname duration reason` bans the current IP; banned players are kicked on register/login (with remaining time + reason) and their registration is not saved; records stored in `banusers.txt`.
 - **OPAuth**: requires Auth; the server console command `opSXMY nickname` grants admin (stored in `opusers.txt`); admins can use the mapped chat commands (default `/op`, `/opSXMY`) with private-message results; non-admins get "Permission denied".
 - **NameTag**: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically.
-- **VehicleTag**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMYVehicleTag` client mod.
+- **VehicleTag**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMY-client` client mod.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
 - **Server info log (loginfo)**: outputs server start time, server version and server map on startup, each line can be toggled separately.
 
@@ -28,6 +29,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── lib.lua          # Shared config library (parsing, language, discovery)
     ├── Auth.lua         # Auth feature (register/login/blocking)
     ├── OPAuth.lua       # Admin (OP) feature (requires Auth)
+├── PlayerBan.lua    # Player ban feature (requires Auth)
     ├── NameTag.lua      # Chat nickname feature
     ├── VehicleTag.lua   # Vehicle tag feature (requires the client mod)
     ├── WelcomeMsg.lua   # Welcome message feature
@@ -56,7 +58,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [time] [LUA] [SXMY_WelcomeMsg] Enjoy :D
 ```
 
-(`Loaded X/Y features`: X = loaded, Y = enabled in config; the `showtest` startup test text prints only once)
+(`Loaded X/Y features`: X = enabled and loaded modules, Y = total module files in `modules/`; the `showtest` startup test text prints only once)
 
 ## Configuration
 
@@ -73,14 +75,26 @@ enable = true          # 身份认证功能开关 / Auth module switch
 passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
 passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
 passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
+maxRegsPerIP = 3       # 单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)
+pbkdf2Iter = 1000      # PBKDF2 慢哈希迭代次数（越大越安全但登录越慢）/ PBKDF2 slow-hash iterations (higher = safer but slower logins)
+nickLength = 15        # 昵称最大字符数（注册限制与 listSXMY 表格列宽）/ Max nickname length (registration limit and listSXMY column width)
 LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
 
-[OPAuth]
-enable = false                  # 管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)
-command = ["op-opSXMY", "opSXMY-opSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+[loginfo]
+enable = true          # 服务器信息日志功能开关 / Server info log module switch
+startTime = true       # 显示服务器启动时间 / Show server start time
+serverVersion = true   # 显示服务器版本 / Show server version
+serverMap = true       # 显示服务器地图（读取 ServerConfig.toml）/ Show server map (read from ServerConfig.toml)
 
 [NameTag]
 enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
+
+[OPAuth]
+enable = false                  # 管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)
+command = ["reload-reloadSXMY", "list-listSXMY", "op-opSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+
+[PlayerBan]
+enable = true      # 玩家封禁功能开关（需启用 Auth）/ Player ban module switch (requires Auth)
 
 [VehicleTag]
 enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMYVehicleTag mod）/ Vehicle tag module switch (requires the SXMYVehicleTag client mod)
@@ -90,12 +104,6 @@ enable = true      # 进服信息功能开关 / Welcome message module switch
 delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
 showtest = true    # 启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)
 text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
-
-[loginfo]
-enable = true          # 服务器信息日志功能开关 / Server info log module switch
-startTime = true       # 显示服务器启动时间 / Show server start time
-serverVersion = true   # 显示服务器版本 / Show server version
-serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / Show server map (read from ServerConfig.toml)
 ```
 
 | Key | Description |
@@ -110,9 +118,10 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].nickLength` | Max nickname length (registration limit and listSXMY column width), default 15 |
 | `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced by the nickname, empty = disabled |
 | `[OPAuth].enable` | Enable/disable the admin (OP) feature (requires Auth enabled too) |
-| `[OPAuth].command` | Admin chat-command to server-command mapping array: `["playerCommand-serverCommand", ...]`, player commands use `/` |
+| `[OPAuth].command` | Admin chat-command to server-command mapping array: `["playerCommand-serverCommand", ...]`, player commands use `/`; default `["reload-reloadSXMY", "list-listSXMY", "op-opSXMY"]`; add `"ban-banSXMY"`, `"banip-banipSXMY"`, `"unban-unbanSXMY"` etc. as needed |
+| `[PlayerBan].enable` | Player ban module switch (requires Auth) |
 | `[NameTag].enable` | Enable/disable the chat nickname feature |
-| `[VehicleTag].enable` | Enable/disable the vehicle tag feature (requires `Resources/Client/SXMYVehicleTag.zip`) |
+| `[VehicleTag].enable` | Enable/disable the vehicle tag feature (requires `Resources/Client/SXMY-client.zip`) |
 | `[WelcomeMsg].enable` | Enable/disable the welcome message feature |
 | `[WelcomeMsg].delay` | Send delay in seconds, waits for the player to sync, default 12 |
 | `[WelcomeMsg].showtest` | Show the welcome text test on startup (after plugin and loginfo output) |
@@ -148,9 +157,15 @@ Type in the in-game chat:
 | `/n nickname` | Set the chat nickname (only when Auth is disabled) |
 | `/op nickname` | OP command: grant admin to a registered nickname (maps to `opSXMY`, **default mapping**) |
 | `/opSXMY nickname` | OP command: same as above (another default player command for `opSXMY`, **default mapping**) |
+| `/ban nickname duration reason` | OP command: ban the login permission of a nickname (maps to `banSXMY`; add `"ban-banSXMY"` to `command`) |
+| `/banip nickname duration reason` | OP command: ban the current IP of a nickname (maps to `banipSXMY`; add `"banip-banipSXMY"` to `command`) |
+| `/unban nickname` or `/unban ip IP` | OP command: lift a ban (maps to `unbanSXMY`; add `"unban-unbanSXMY"` to `command`) |
 | `/list` | OP command: private-message the online-player table (maps to `listSXMY`; add `"list-listSXMY"` to `command`) |
 | `/reload` | OP command: hot-reload the plugin (maps to `reloadSXMY`; add `"reload-reloadSXMY"` to `command`) |
 
+- Ban duration format: `<amount><unit>`, `m` minute, `h` hour, `d` day, `M` month (30 days, uppercase to distinguish from minutes), `y` year (365 days); e.g. `100m` (1 h 40 min), `5d`.
+- Banned players are kicked on **register or login** with "You are banned from this server / Remaining: Xd Xh Xm / Reason: ..."; every account on a `banip`-banned IP (including new registrations) is kicked, and the registration is not saved.
+- Ban records are stored in `banusers.txt` next to `users.txt`, one line per record: `IP/nick unbanTime(YYYYMMDDHHMM) reason`, e.g. `nick:Tangzixy 202608091123 speeding`, `ip:1.2.3.4 202608091123`. The file is re-read on every server start; on login/register, players whose unban time has not been reached yet are kicked with the remaining time shown. The legacy timestamp format (`nick:xx = 1787000000:reason`) is still read automatically.
 - OPAuth commands only work for players who are **logged in and granted admin**; anyone else gets a private "Permission denied" message.
 - **Mapping to official server commands (e.g. `exit`) is not supported**: there is no API to inject server console input, and hard-killing the process is not graceful.
 - **New server commands need no OPAuth changes**: a module exposes a global `SXMY_ModuleName_onConsoleInput(command)` function (returning non-nil when handled), then just add a `"playerCommand-serverCommand"` entry to `[OPAuth].command` (e.g. `SXMY_Example_onConsoleInput` handles `exampleSXMY`, mapped as `"ex-exampleSXMY"`).
@@ -165,6 +180,9 @@ Type in the in-game chat:
 |---|---|
 | `reloadSXMY` | Hot-reload the plugin (type in the server console). Apply plugin file changes without restarting the server; note: players' login states are reset on reload and they must log in again. |
 | `listSXMY` | Print the online-player table: nickname / player name / car count / PID (column width driven by `[Auth].nickLength`) |
+| `banSXMY nickname duration reason` | Ban the login permission of a nickname (`banusers.txt`, requires PlayerBan) |
+| `banipSXMY nickname duration reason` | Ban the current IP of a nickname (requires PlayerBan) |
+| `unbanSXMY nickname` / `unbanSXMY ip IP` | Lift a nickname or IP ban (requires PlayerBan) |
 | `opSXMY nickname` | Grant admin to a registered nickname (stored in `opusers.txt`, requires OPAuth) |
 
 ## Security Notes
@@ -180,7 +198,7 @@ Inside a module, use `lib = require("modules.lib")` for config access (`lib.getC
 
 - **Changes to config.toml not applying?** Restart the server; the config is only read at startup.
 - **How to switch the log language?** Set `[General] language` in `config.toml` to `"en"` or `"zh"` and restart.
-- **Adding a new feature module?** Create a `.lua` file under `modules/`, then add a `[ModuleName]` section with an `enable` switch in `config.toml`. `main.lua` auto-discovers and loads all enabled modules — no code changes needed.
+- **Adding a new feature module?** Just create a `.lua` file under `modules/` (no `config.toml` change needed — a module with no config key is enabled by default and generates its own section); to disable it, set `enable = false` in its section and restart.
 
 ## License
 

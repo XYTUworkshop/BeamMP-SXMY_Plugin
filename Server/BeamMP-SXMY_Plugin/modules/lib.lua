@@ -117,7 +117,16 @@ end
 -- Check whether a module section is enabled (supports both "enabled" and "enable" keys) / 检查某模块节是否启用（同时支持 "enabled" 与 "enable" 键）
 function lib.enabled(section)
     local cfg = lib.getConfig()
-    return cfg[section .. ".enabled"] == true or cfg[section .. ".enable"] == true
+    local v = cfg[section .. ".enabled"]
+    if v == nil then
+        v = cfg[section .. ".enable"]
+    end
+    if v == nil then
+        -- 无配置键 = 默认启用（模块文件存在即生效，配置节由模块自动生成；避免"未生成节→禁用→不生成节"死循环）/
+        -- no config key = enabled by default (the module runs and generates its own section; avoids the "no section -> disabled -> no section" deadlock)
+        return true
+    end
+    return v == true
 end
 
 -- Check whether the config file exists / 检查配置文件是否存在
@@ -445,6 +454,9 @@ function lib.ensureSection(section, defaults)
         end
     end
     if same and not changed then
+        -- Already normalized: refresh the cache so getEnabledModules() sees the sections even when nothing was written / 已规范化：刷新缓存，即使无写入也要保证 getEnabledModules() 能读到节
+        cached = nil
+        lib.getConfig()
         return -- already normalized / 已规范化，无需写入
     end
 
