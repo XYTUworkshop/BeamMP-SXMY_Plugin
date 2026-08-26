@@ -612,7 +612,7 @@ function SXMY_Auth_onPlayerJoin(player_id)
     end
 end
 
--- Periodic tick: prompt unauthenticated players and expire stale login-fail records / 周期检查：提示未认证玩家并清理过期登录失败记录
+-- Periodic tick: prompt unauthenticated players, despawn their leftover vehicles, and expire stale login-fail records / 周期检查：提示未认证玩家、删除其残留车辆并清理过期登录失败记录
 function SXMY_Auth_Tick()
     local now = os.time()
     -- Expire login-fail records older than the lock window / 清理超过锁定窗口的失败记录
@@ -624,6 +624,13 @@ function SXMY_Auth_Tick()
     for player_id in pairs(MP.GetPlayers()) do
         local st = players[player_id]
         if not (st and st.loggedIn) then
+            -- Despawn vehicles left from a previous session (reconnect, hot-reload) / 删除上次会话残留的车辆（重连、热重载后未登录）
+            local ok, vehs = pcall(MP.GetPlayerVehicles, player_id)
+            if ok and type(vehs) == "table" then
+                for vehId in pairs(vehs) do
+                    pcall(MP.RemoveVehicle, player_id, vehId)
+                end
+            end
             if not st then
                 players[player_id] = { joinedAt = now, lastPrompt = 0 }
                 st = players[player_id]
