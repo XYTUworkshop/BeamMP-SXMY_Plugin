@@ -10,13 +10,15 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **自动发现模块**：模块列表自动从 `modules/` 目录扫描发现，新增功能无需修改任何代码；每个模块自行生成自己的配置节（无配置键时默认启用）
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
 - **身份认证（Auth）**：`/reg` 注册、`/login` 登录、`/logout` 退出，密码 PBKDF2 慢哈希存储；未登录玩家聊天不可见、不可刷车；已登录玩家不可重复注册/登录（需先 `/logout`）；密码规则（长度/大小写/特殊符号）可配置
-- **管理员账号（OPAuth）**：需启用 Auth；服务器控制台 `opSXMY 昵称` 设置管理员（记录于 `opusers.txt`）；管理员可在聊天框使用映射命令（默认 `/op`、`/opSXMY`），执行结果私信返回；非管理员使用提示「权限不足」
-  OPAuth: requires Auth; the server console command `opSXMY nickname` grants admin (stored in `opusers.txt`); admins can use the mapped chat commands (default `/op`, `/opSXMY`) with private-message results; non-admins get "Permission denied"
+- **管理员账号（OPAuth）**：需启用 Auth；服务器控制台 `opSXMY 昵称` 设置管理员（记录于 `opusers.txt`）；管理员可在聊天框使用映射命令（默认 `/reload`、`/list`、`/op`、`/kick`、`/ban`、`/banip`、`/unban`），执行结果私信返回；非管理员使用提示「权限不足」
+  OPAuth: requires Auth; the server console command `opSXMY nickname` grants admin (stored in `opusers.txt`); admins can use the mapped chat commands (default `/reload`, `/list`, `/op`, `/kick`, `/ban`, `/banip`, `/unban`) with private-message results; non-admins get "Permission denied"
 - **玩家封禁（PlayerBan）**：需启用 Auth；`banSXMY 昵称 时长 理由` 封禁登录权限、`banipSXMY 昵称 时长 理由` 封禁其当前 IP；被封禁者在注册/登录时被踢出（含剩余时间与原因），注册账号不保存；记录存于 `banusers.txt`
   PlayerBan: requires Auth; `banSXMY nickname duration reason` bans the login permission, `banipSXMY nickname duration reason` bans the current IP; banned players are kicked on register/login (with remaining time + reason) and their registration is not saved; records stored in `banusers.txt`
 - **聊天昵称（NameTag）**：未启用 Auth 时玩家用 `/n 名字` 设置聊天昵称，消息带 `[昵称]` 前缀；启用 Auth 时自动使用登录账号昵称
-- **车辆标签（VehicleTag）**：玩家登录或设置 `/n` 昵称后，其所有车辆上方（含玩家自己的车）显示昵称标签，并隐藏 BeamMP 官方标签；需要随服务器下发的 `SXMYVehicleTag` 客户端 mod
+- **车辆标签（VehicleTag）**：玩家登录或设置 `/n` 昵称后，其所有车辆上方（含玩家自己的车）显示昵称标签，并隐藏 BeamMP 官方标签；需要随服务器下发的 `SXMY-client.zip` 客户端 mod
 - **中英日志切换**：`[General] language` 可设置 `zh` 或 `en`，插件控制台日志只输出所选语言
+- **玩家踢出（PlayerKick）**：服务器控制台 `kickSXMY 昵称 理由` 按 Auth 登录昵称踢出（与 `banSXMY` 同样的查找方式）；管理员可映射 `/kick 昵称 理由`（默认映射），结果私信返回
+  PlayerKick: the server console command `kickSXMY nickname reason` kicks an online player by their Auth login nickname (same lookup as `banSXMY`); admins can use the mapped `/kick nickname reason` (default mapping) with private-message results
 - **服务器信息日志（loginfo）**：启动时输出服务器启动时间、服务器版本、服务器地图，每项可单独开关
 
 ## 目录结构
@@ -32,6 +34,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── Auth.lua         # 身份认证功能（注册/登录/拦截）
     ├── OPAuth.lua       # 管理员账号功能（需启用 Auth）
     ├── PlayerBan.lua    # 玩家封禁功能（需启用 Auth）
+    ├── PlayerKick.lua   # 玩家踢出功能（需启用 Auth）
     ├── NameTag.lua      # 聊天昵称功能
     ├── VehicleTag.lua   # 车辆标签功能（需客户端 mod）
     ├── WelcomeMsg.lua   # 进服信息功能
@@ -48,10 +51,16 @@ Resources/Server/BeamMP-SXMY_Plugin/
 
 ```
 [时间] [LUA] [SXMY_Plugin] 插件加载完成
-[时间] [LUA] [SXMY_Plugin] 已加载2/2个功能
+[时间] [LUA] [SXMY_Plugin] 已加载8/8个功能
 [时间] [LUA] [SXMY_Plugin] 已加载的功能：
-[时间] [LUA] [SXMY_Plugin] 1. WelcomeMsg
+[时间] [LUA] [SXMY_Plugin] 1. Auth
 [时间] [LUA] [SXMY_Plugin] 2. loginfo
+[时间] [LUA] [SXMY_Plugin] 3. NameTag
+[时间] [LUA] [SXMY_Plugin] 4. OPAuth
+[时间] [LUA] [SXMY_Plugin] 5. PlayerKick
+[时间] [LUA] [SXMY_Plugin] 6. PlayerBan
+[时间] [LUA] [SXMY_Plugin] 7. VehicleTag
+[时间] [LUA] [SXMY_Plugin] 8. WelcomeMsg
 [时间] [LUA] [SXMY_Loginfo] 服务器启动时间: 2026.08.18-14.30.00
 [时间] [LUA] [SXMY_Loginfo] 服务器版本: 3.9.3
 [时间] [LUA] [SXMY_Loginfo] 服务器地图: gridmap
@@ -59,6 +68,8 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [时间] [LUA] [SXMY_WelcomeMsg] Welcome to SXMY
 [时间] [LUA] [SXMY_WelcomeMsg] Enjoy :D
 ```
+
+（以上为示例，模块加载顺序可能与实际略有不同）
 
 （`已加载X/Y个功能`：X 为已启用且成功加载的模块数，Y 为 `modules/` 中存在的模块文件总数；`showtest` 启动测试文本仅输出一次）
 
@@ -93,13 +104,16 @@ enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录
 
 [OPAuth]
 enable = false                  # 管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)
-command = ["reload-reloadSXMY", "list-listSXMY", "op-opSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+command = ["reload-reloadSXMY", "list-listSXMY", "op-opSXMY", "kick-kickSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+
+[PlayerKick]
+enable = true  # 玩家踢出功能开关（kickSXMY 命令）/ Player kick module switch (kickSXMY command)
 
 [PlayerBan]
 enable = true      # 玩家封禁功能开关（需启用 Auth）/ Player ban module switch (requires Auth)
 
 [VehicleTag]
-enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMYVehicleTag mod）/ Vehicle tag module switch (requires the SXMYVehicleTag client mod)
+enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMY-client mod）/ Vehicle tag module switch (requires the SXMY-client client mod)
 
 [WelcomeMsg]
 enable = true      # 进服信息功能开关 / Welcome message module switch
@@ -120,7 +134,8 @@ text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言�
 | `[Auth].nickLength` | 昵称最大字符数（注册限制与 listSXMY 表格列宽），默认 15 |
 | `[Auth].LoginMsg` | 登录成功广播消息（`/say`），`<name>` 替换为玩家昵称，留空则不发送 |
 | `[OPAuth].enable` | 启用/禁用管理员账号功能（需同时启用 Auth）|
-| `[OPAuth].command` | 管理员聊天命令-服务端命令映射数组：`["玩家命令-服务端命令", ...]`，玩家命令带 `/`；默认 `["reload-reloadSXMY", "list-listSXMY", "op-opSXMY"]`，可自行添加 `"ban-banSXMY"`、`"banip-banipSXMY"`、`"unban-unbanSXMY"` 等 |
+| `[OPAuth].command` | 管理员聊天命令-服务端命令映射数组：`["玩家命令-服务端命令", ...]`，玩家命令带 `/`；默认 `["reload-reloadSXMY", "list-listSXMY", "op-opSXMY", "ban-banSXMY", "banip-banipSXMY", "unban-unbanSXMY", "kick-kickSXMY"]`，可自行增删 |
+| `[PlayerKick].enable` | 玩家踢出功能开关（`kickSXMY` 命令，需启用 Auth）|
 | `[PlayerBan].enable` | 玩家封禁功能开关（需启用 Auth）|
 | `[NameTag].enable` | 启用/禁用聊天昵称功能 |
 | `[VehicleTag].enable` | 启用/禁用车辆标签功能（需 `Resources/Client/SXMY-client.zip`） |
@@ -160,12 +175,12 @@ enable = true
 | `/logout` | 退出登录（清除登录状态、删除全部车辆与车辆标签昵称）|
 | `/n 昵称` | 设置聊天昵称（仅未启用 Auth 时） |
 | `/op 昵称` | 管理员命令：将已注册昵称设为管理员（映射 `opSXMY`，**默认映射**）|
-| `/opSXMY 昵称` | 管理员命令：同上（`opSXMY` 的另一个默认玩家命令，**默认映射**）|
-| `/ban 昵称 时长 理由` | 管理员命令：封禁昵称登录权限（映射 `banSXMY`，需在 `command` 中添加 `"ban-banSXMY"`）|
-| `/banip 昵称 时长 理由` | 管理员命令：封禁昵称当前 IP（映射 `banipSXMY`，需在 `command` 中添加 `"banip-banipSXMY"`）|
-| `/unban 昵称` 或 `/unban ip IP` | 管理员命令：解除封禁（映射 `unbanSXMY`，需在 `command` 中添加 `"unban-unbanSXMY"`）|
-| `/list` | 管理员命令：私信返回在线玩家表格（映射 `listSXMY`，需在 `command` 中添加 `"list-listSXMY"`）|
-| `/reload` | 管理员命令：热重载插件（映射 `reloadSXMY`，需在 `command` 中添加 `"reload-reloadSXMY"`）|
+| `/ban 昵称 时长 理由` | 管理员命令：封禁昵称登录权限（映射 `banSXMY`，**默认映射**）|
+| `/banip 昵称 时长 理由` | 管理员命令：封禁昵称当前 IP（映射 `banipSXMY`，**默认映射**）|
+| `/unban 昵称` 或 `/unban ip IP` | 管理员命令：解除封禁（映射 `unbanSXMY`，**默认映射**）|
+| `/kick 昵称 理由` | 管理员命令：按 Auth 昵称踢出在线玩家（映射 `kickSXMY`，**默认映射**）|
+| `/list` | 管理员命令：私信返回在线玩家表格（映射 `listSXMY`，**默认映射**）|
+| `/reload` | 管理员命令：热重载插件（映射 `reloadSXMY`，**默认映射**）|
 
 - 封禁时长格式：`<数量><单位>`，`m` 分钟、`h` 小时、`d` 天、`M` 月（30 天，大写区分分钟）、`y` 年（365 天）；如 `100m`（1 小时 40 分）、`5d`
 - 被封禁者在**注册或登录**时被踢出，提示「你在此服务器已被封禁 / 剩余时间：Xd Xh Xm / 原因：xxx」；被 `banip` 封禁的 IP 上任何账号（含新注册）都会被踢，且注册的账号不会保存
@@ -188,6 +203,7 @@ enable = true
 | `banSXMY 昵称 时长 理由` | 封禁昵称登录权限（`banusers.txt`，需启用 PlayerBan）|
 | `banipSXMY 昵称 时长 理由` | 封禁昵称当前使用的 IP（需启用 PlayerBan）|
 | `unbanSXMY 昵称` / `unbanSXMY ip IP` | 解除昵称或 IP 封禁（需启用 PlayerBan）|
+| `kickSXMY 昵称 理由` | 按 Auth 昵称踢出在线玩家（精确匹配，账号区分大小写；理由可空）|
 | `opSXMY 昵称` | 将已注册昵称设为管理员（记录于 `opusers.txt`，需启用 OPAuth）|
 
 ## 安全注意事项

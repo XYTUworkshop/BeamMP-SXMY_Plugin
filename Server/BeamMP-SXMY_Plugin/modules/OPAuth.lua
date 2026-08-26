@@ -13,7 +13,7 @@ end
 -- 生成并规范化本模块配置节 / generate and normalize this module's config section
 lib.ensureSection("OPAuth", {
     { key = "enable", v = true, c = "管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)" },
-    { key = "command", v = { "reload-reloadSXMY", "list-listSXMY", "op-opSXMY" }, c = "管理员聊天命令-服务端命令映射，格式：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping, format: playerCommand(with /)-serverCommand" },
+    { key = "command", v = { "reload-reloadSXMY", "list-listSXMY", "op-opSXMY","ban-banSXMY", "banip-banipSXMY","unban-unbanSXMY", "kick-kickSXMY" }, c = "管理员聊天命令-服务端命令映射，格式：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping, format: playerCommand(with /)-serverCommand" },
 })
 
 local OP_FILE = "Resources/Server/BeamMP-SXMY_Plugin/opusers.txt" -- op file, relative to working dir / 管理员文件（相对服务器工作目录）
