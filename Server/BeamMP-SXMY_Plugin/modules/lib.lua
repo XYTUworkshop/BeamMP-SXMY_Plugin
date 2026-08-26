@@ -35,25 +35,38 @@ local function parseConfig(path)
                     sections[#sections + 1] = s
                 end
             else
-                -- Quoted string value (may contain spaces) / 带引号的字符串值（可能含空格）
-                local key, quoted = trimmed:match('^(%w+)%s*=%s*"(.*)"%s*$')
-                if key then
-                    cfg[section .. "." .. key] = quoted
+                -- Array value: key = ["a", "b", "c"] / 数组值（TOML 数组，单行）
+                local keyArr, arrStr = trimmed:match('^(%w+)%s*=%s*%[(.-)%]%s*$')
+                if keyArr then
+                    local arr = {}
+                    for item in (arrStr .. ","):gmatch("%s*([^,]-)%s*,") do
+                        if item ~= "" then
+                            -- Strip surrounding quotes if present / 去除引号
+                            arr[#arr + 1] = item:match('^"(.*)"$') or item
+                        end
+                    end
+                    cfg[section .. "." .. keyArr] = arr
                 else
-                    -- Bare value: boolean or number / 无引号的值：布尔或数字
-                    local key2, val = trimmed:match("^(%w+)%s*=%s*(%S+)%s*$")
-                    if key2 then
-                        if val == "true" then
-                            cfg[section .. "." .. key2] = true
-                        elseif val == "false" then
-                            cfg[section .. "." .. key2] = false
-                        else
-                            -- Try to parse numbers (e.g. delay = 12) / 尝试解析数字（如 delay = 12）
-                            local num = tonumber(val)
-                            if num then
-                                cfg[section .. "." .. key2] = num
+                    -- Quoted string value (may contain spaces) / 带引号的字符串值（可能含空格）
+                    local key, quoted = trimmed:match('^(%w+)%s*=%s*"(.*)"%s*$')
+                    if key then
+                        cfg[section .. "." .. key] = quoted
+                    else
+                        -- Bare value: boolean or number / 无引号的值：布尔或数字
+                        local key2, val = trimmed:match("^(%w+)%s*=%s*(%S+)%s*$")
+                        if key2 then
+                            if val == "true" then
+                                cfg[section .. "." .. key2] = true
+                            elseif val == "false" then
+                                cfg[section .. "." .. key2] = false
                             else
-                                cfg[section .. "." .. key2] = val
+                                -- Try to parse numbers (e.g. delay = 12) / 尝试解析数字（如 delay = 12）
+                                local num = tonumber(val)
+                                if num then
+                                    cfg[section .. "." .. key2] = num
+                                else
+                                    cfg[section .. "." .. key2] = val
+                                end
                             end
                         end
                     end
@@ -154,6 +167,13 @@ local function formatValue(v)
         return v and "true" or "false"
     elseif type(v) == "number" then
         return tostring(v)
+    elseif type(v) == "table" then
+        -- Array default: ["a", "b"] / 数组默认值
+        local parts = {}
+        for _, item in ipairs(v) do
+            parts[#parts + 1] = '"' .. tostring(item) .. '"'
+        end
+        return "[" .. table.concat(parts, ", ") .. "]"
     end
     -- Escape newlines as literal \n so the value stays on one line / 将换行转义为字面 \n 保持单行
     return '"' .. tostring(v):gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\r", "\\r"):gsub("\n", "\\n") .. '"'

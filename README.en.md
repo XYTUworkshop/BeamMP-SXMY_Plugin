@@ -10,6 +10,7 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 - **Auto-discovered modules**: the module list is read automatically from `config.toml`, no code changes needed to add features.
 - **Welcome message (WelcomeMsg)**: sends the configured welcome text to a player on join via private message, supports any language, `\n` splits into multiple messages.
 - **Auth**: `/reg` register, `/login` log in, `/logout` log out, PBKDF2 slow-hash password storage; unauthenticated players cannot chat or spawn vehicles; logged-in players cannot re-register/log in again (must `/logout` first); password rules configurable.
+- **OPAuth**: requires Auth; the server console command `opSXMY nickname` grants admin (stored in `opusers.txt`); admins can use the mapped chat commands (default `/op`, `/opSXMY`) with private-message results; non-admins get "Permission denied".
 - **NameTag**: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically.
 - **VehicleTag**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMYVehicleTag` client mod.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
@@ -26,6 +27,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 └── modules/             # Module directory (subfolder, not auto-loaded; loaded via require in main.lua)
     ├── lib.lua          # Shared config library (parsing, language, discovery)
     ├── Auth.lua         # Auth feature (register/login/blocking)
+├── OPAuth.lua       # Admin (OP) feature (requires Auth)
     ├── NameTag.lua      # Chat nickname feature
     ├── VehicleTag.lua   # Vehicle tag feature (requires the client mod)
     ├── WelcomeMsg.lua   # Welcome message feature
@@ -73,6 +75,10 @@ passwdcase = false     # 是否要求大小写混合（不要求也可使用）/
 passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
 LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
 
+[OPAuth]
+enable = false                  # 管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)
+command = ["op-opSXMY", "opSXMY-opSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+
 [NameTag]
 enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
 
@@ -103,6 +109,8 @@ serverMap = true       # 显示服务器地图（读取 ServerConfig.toml） / S
 | `[Auth].pbkdf2Iter` | PBKDF2 slow-hash iterations, default 1000 (higher = safer but slower logins) |
 | `[Auth].nickLength` | Max nickname length (registration limit and listSXMY column width), default 15 |
 | `[Auth].LoginMsg` | Login broadcast message (`/say`), `<name>` replaced by the nickname, empty = disabled |
+| `[OPAuth].enable` | Enable/disable the admin (OP) feature (requires Auth enabled too) |
+| `[OPAuth].command` | Admin chat-command to server-command mapping array: `["playerCommand-serverCommand", ...]`, player commands use `/` |
 | `[NameTag].enable` | Enable/disable the chat nickname feature |
 | `[VehicleTag].enable` | Enable/disable the vehicle tag feature (requires `Resources/Client/SXMYVehicleTag.zip`) |
 | `[WelcomeMsg].enable` | Enable/disable the welcome message feature |
@@ -138,6 +146,13 @@ Type in the in-game chat:
 | `/login nickname password` | Log in (`/logout` first if already logged in) |
 | `/logout` | Log out (clears the login state, despawns all vehicles and clears the vehicle-tag nickname) |
 | `/n nickname` | Set the chat nickname (only when Auth is disabled) |
+| `/list` | OP command: private-message the online-player table (maps to `listSXMY`) |
+| `/reload` | OP command: hot-reload the plugin (maps to `reloadSXMY`) |
+| `/op nickname` | OP command: grant admin to a registered nickname (maps to `opSXMY`) |
+
+- OPAuth commands only work for players who are **logged in and granted admin**; anyone else gets a private "Permission denied" message.
+- **Mapping to official server commands (e.g. `exit`) is not supported**: there is no API to inject server console input, and hard-killing the process is not graceful.
+- **New server commands need no OPAuth changes**: a module exposes a global `SXMY_ModuleName_onConsoleInput(command)` function (returning non-nil when handled), then just add a `"playerCommand-serverCommand"` entry to `[OPAuth].command` (e.g. `SXMY_Example_onConsoleInput` handles `exampleSXMY`, mapped as `"ex-exampleSXMY"`).
 
 - Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.
 - Logged in: messages starting with `/` are hidden from others (commands are not broadcast).
@@ -149,6 +164,7 @@ Type in the in-game chat:
 |---|---|
 | `reloadSXMY` | Hot-reload the plugin (type in the server console). Apply plugin file changes without restarting the server; note: players' login states are reset on reload and they must log in again. |
 | `listSXMY` | Print the online-player table: nickname / player name / car count / PID (column width driven by `[Auth].nickLength`) |
+| `opSXMY nickname` | Grant admin to a registered nickname (stored in `opusers.txt`, requires OPAuth) |
 
 ## Security Notes
 

@@ -532,6 +532,18 @@ local function handleLogin(player_id, args)
             end
         end
         if passOK then
+            -- Reject logging in with a nickname another online player already uses / 拒绝已被其他在线玩家使用的昵称（防同昵称多会话）
+            local nickInUse = false
+            for _, other in pairs(players) do
+                if other.loggedIn and other.nick == nick then
+                    nickInUse = true
+                    break
+                end
+            end
+            if nickInUse then
+                notify(player_id, "该昵称已在线 请勿重复登录", "That nickname is already online, do not log in twice")
+                return
+            end
             loginFails[lockKey] = nil
             players[player_id] = { nick = nick, loggedIn = true, joinedAt = os.time(), lastPrompt = os.time() }
             notify(player_id, "登录成功", "Logged in successfully")
@@ -657,16 +669,14 @@ function SXMY_Auth_onPlayerDisconnect(player_id)
     players[player_id] = nil
 end
 
--- 控制台命令：listSXMY —— 输出对齐的在线玩家表格 / console command: listSXMY — print an aligned online-player table
+-- Generate the online-player table rows (shared by the console command and OPAuth private replies) / 生成在线玩家表格行（控制台命令与 OPAuth 私信共用）
 -- 列宽：NickName = 昵称限制+2，Name = 15+2，Car 与 ID 右对齐 2 位、间隔 2 空格 / columns: NickName = nick limit + 2, Name = 15 + 2, Car/ID right-aligned 2-wide with 2 spaces
-function SXMY_Auth_onConsoleInput(command)
-    if not command or not command:match("^listSXMY%s*$") then
-        return nil
-    end
+function SXMY_Auth_ListRows()
+    local rows = {}
     local maxNick = lib.get("Auth", "nickLength", 15)
     local nickCol = maxNick + 2
     local nameCol = 17 -- 15 chars + 2 separator spaces / 15 字符 + 2 个分隔空格
-    print("[SXMY_Auth] " .. "NickName" .. (" "):rep(nickCol - 8) .. "Name" .. (" "):rep(nameCol - 4) .. "Car  ID")
+    rows[#rows + 1] = "NickName" .. (" "):rep(nickCol - 8) .. "Name" .. (" "):rep(nameCol - 4) .. "Car  ID"
     for pid, name in pairs(MP.GetPlayers()) do
         local nick = players[pid] and players[pid].nick or "-"
         local cars = 0
@@ -677,7 +687,33 @@ function SXMY_Auth_onConsoleInput(command)
                 cars = cars + 1
             end
         end
-        print("[SXMY_Auth] " .. nick .. (" "):rep(nickCol - #nick) .. name .. (" "):rep(nameCol - #name) .. string.format("%2d", cars) .. "  " .. string.format("%2d", pid))
+        rows[#rows + 1] = nick .. (" "):rep(nickCol - #nick) .. name .. (" "):rep(nameCol - #name) .. string.format("%2d", cars) .. "  " .. string.format("%2d", pid)
+    end
+    return rows
+end
+
+-- Get the currently logged-in nickname of a player (nil if not logged in) / 获取玩家当前登录昵称（未登录返回 nil）
+function SXMY_Auth_GetLoginNick(player_id)
+    local st = players[player_id]
+    if st and st.loggedIn and st.nick then
+        return st.nick
+    end
+    return nil
+end
+
+-- Check whether an account exists / 检查账户是否存在
+function SXMY_Auth_AccountExists(nick)
+    return accounts[nick] ~= nil
+end
+
+-- 控制台命令：listSXMY —— 输出对齐的在线玩家表格 / console command: listSXMY — print an aligned online-player table
+function SXMY_Auth_onConsoleInput(command)
+    if not command or not command:match("^listSXMY%s*$") then
+        return nil
+    end
+    local rows = SXMY_Auth_ListRows()
+    for _, line in ipairs(rows) do
+        print("[SXMY_Auth] " .. line)
     end
     -- Return an empty string (not nil): the console treats nil as "not handled" and prints "Unknown command";
     -- any non-nil value suppresses that and an empty string produces no extra output / 返回空串而非 nil：控制台将 nil 视为"未处理"并打印 Unknown command；非 nil 值可阻止，空串不产生额外输出
