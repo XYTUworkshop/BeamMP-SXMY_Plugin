@@ -20,14 +20,14 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 
 ```
 Resources/Server/BeamMP-SXMY_Plugin/
-├── main.lua              # Main loader: reads config and loads modules by switch
+├── main.lua             # Main loader: reads config and loads modules by switch
 ├── config.toml          # Config file: language and feature switches
 ├── README.md            # Chinese README
 ├── README.en.md         # English README (this file)
 └── modules/             # Module directory (subfolder, not auto-loaded; loaded via require in main.lua)
     ├── lib.lua          # Shared config library (parsing, language, discovery)
     ├── Auth.lua         # Auth feature (register/login/blocking)
-├── OPAuth.lua       # Admin (OP) feature (requires Auth)
+    ├── OPAuth.lua       # Admin (OP) feature (requires Auth)
     ├── NameTag.lua      # Chat nickname feature
     ├── VehicleTag.lua   # Vehicle tag feature (requires the client mod)
     ├── WelcomeMsg.lua   # Welcome message feature
@@ -146,9 +146,10 @@ Type in the in-game chat:
 | `/login nickname password` | Log in (`/logout` first if already logged in) |
 | `/logout` | Log out (clears the login state, despawns all vehicles and clears the vehicle-tag nickname) |
 | `/n nickname` | Set the chat nickname (only when Auth is disabled) |
-| `/list` | OP command: private-message the online-player table (maps to `listSXMY`) |
-| `/reload` | OP command: hot-reload the plugin (maps to `reloadSXMY`) |
-| `/op nickname` | OP command: grant admin to a registered nickname (maps to `opSXMY`) |
+| `/op nickname` | OP command: grant admin to a registered nickname (maps to `opSXMY`, **default mapping**) |
+| `/opSXMY nickname` | OP command: same as above (another default player command for `opSXMY`, **default mapping**) |
+| `/list` | OP command: private-message the online-player table (maps to `listSXMY`; add `"list-listSXMY"` to `command`) |
+| `/reload` | OP command: hot-reload the plugin (maps to `reloadSXMY`; add `"reload-reloadSXMY"` to `command`) |
 
 - OPAuth commands only work for players who are **logged in and granted admin**; anyone else gets a private "Permission denied" message.
 - **Mapping to official server commands (e.g. `exit`) is not supported**: there is no API to inject server console input, and hard-killing the process is not graceful.

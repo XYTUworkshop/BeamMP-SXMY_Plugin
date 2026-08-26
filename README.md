@@ -10,7 +10,7 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **自动发现模块**：模块列表自动从 `config.toml` 读取，新增功能无需修改任何代码
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
 - **身份认证（Auth）**：`/reg` 注册、`/login` 登录、`/logout` 退出，密码 PBKDF2 慢哈希存储；未登录玩家聊天不可见、不可刷车；已登录玩家不可重复注册/登录（需先 `/logout`）；密码规则（长度/大小写/特殊符号）可配置
-- **管理员账号（OPAuth）**：需启用 Auth；服务器控制台 `opSXMY 昵称` 设置管理员（记录于 `opusers.txt`）；管理员可在聊天框使用映射命令（默认 `/list`、`/reload`、`/op`），执行结果私信返回；非管理员使用提示「权限不足」
+- **管理员账号（OPAuth）**：需启用 Auth；服务器控制台 `opSXMY 昵称` 设置管理员（记录于 `opusers.txt`）；管理员可在聊天框使用映射命令（默认 `/op`、`/opSXMY`），执行结果私信返回；非管理员使用提示「权限不足」
   OPAuth: requires Auth; the server console command `opSXMY nickname` grants admin (stored in `opusers.txt`); admins can use the mapped chat commands (default `/op`, `/opSXMY`) with private-message results; non-admins get "Permission denied"
 - **聊天昵称（NameTag）**：未启用 Auth 时玩家用 `/n 名字` 设置聊天昵称，消息带 `[昵称]` 前缀；启用 Auth 时自动使用登录账号昵称
 - **车辆标签（VehicleTag）**：玩家登录或设置 `/n` 昵称后，其所有车辆上方（含玩家自己的车）显示昵称标签，并隐藏 BeamMP 官方标签；需要随服务器下发的 `SXMYVehicleTag` 客户端 mod
@@ -21,14 +21,14 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 
 ```
 Resources/Server/BeamMP-SXMY_Plugin/
-├── main.lua              # 主加载器：读取配置并按开关加载模块
+├── main.lua             # 主加载器：读取配置并按开关加载模块
 ├── config.toml          # 配置文件：语言与各功能开关
 ├── README.md            # 中文说明（本文件）
 ├── README.en.md         # 英文说明
 └── modules/             # 功能模块目录（子文件夹，不会被自动加载，由 main.lua require 加载）
     ├── lib.lua          # 共享配置解析库（配置解析、语言切换、模块发现）
     ├── Auth.lua         # 身份认证功能（注册/登录/拦截）
-├── OPAuth.lua       # 管理员账号功能（需启用 Auth）
+    ├── OPAuth.lua       # 管理员账号功能（需启用 Auth）
     ├── NameTag.lua      # 聊天昵称功能
     ├── VehicleTag.lua   # 车辆标签功能（需客户端 mod）
     ├── WelcomeMsg.lua   # 进服信息功能
@@ -146,9 +146,10 @@ enable = true
 | `/login 昵称 密码` | 登录（已登录时需先 `/logout`）|
 | `/logout` | 退出登录（清除登录状态、删除全部车辆与车辆标签昵称）|
 | `/n 昵称` | 设置聊天昵称（仅未启用 Auth 时） |
-| `/list` | 管理员命令：私信返回在线玩家表格（映射 `listSXMY`）|
-| `/reload` | 管理员命令：热重载插件（映射 `reloadSXMY`）|
-| `/op 昵称` | 管理员命令：将已注册昵称设为管理员（映射 `opSXMY`）|
+| `/op 昵称` | 管理员命令：将已注册昵称设为管理员（映射 `opSXMY`，**默认映射**）|
+| `/opSXMY 昵称` | 管理员命令：同上（`opSXMY` 的另一个默认玩家命令，**默认映射**）|
+| `/list` | 管理员命令：私信返回在线玩家表格（映射 `listSXMY`，需在 `command` 中添加 `"list-listSXMY"`）|
+| `/reload` | 管理员命令：热重载插件（映射 `reloadSXMY`，需在 `command` 中添加 `"reload-reloadSXMY"`）|
 
 - OPAuth 命令仅对**已登录且被设为管理员**的玩家生效，其他人使用私信提示「权限不足」
 - **不支持映射官方服务端命令**（如 `exit`）：插件无法注入服务器控制台命令，外部强杀进程不优雅
