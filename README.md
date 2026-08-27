@@ -1,4 +1,4 @@
-# BeamMP-SXMY_Plugin
+# BeamMP-SXMY_Plugin v1.0.0
 
 BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础：`main.lua` 主加载 + 自动发现模块 + 中英日志切换。基于 **BeamMP-Server v3.x**（Lua 5.3）开发。
 
@@ -10,18 +10,15 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **自动发现模块**：模块列表自动从 `modules/` 目录扫描发现，新增功能无需修改任何代码；每个模块自行生成自己的配置节（无配置键时默认启用）
 - **进服信息（WelcomeMsg）**：玩家进入服务器时私信发送配置的欢迎文本，支持任意语言，`\n` 换行分多条发送
 - **身份认证（Auth）**：`/reg` 注册、`/login` 登录、`/logout` 退出，密码 PBKDF2 慢哈希存储；未登录玩家聊天不可见、不可刷车；已登录玩家不可重复注册/登录（需先 `/logout`）；密码规则（长度/大小写/特殊符号）可配置
-- **管理员账号（OPAuth）**：需启用 Auth；服务器控制台 `opSXMY 昵称` 设置管理员（记录于 `opusers.txt`）；管理员可在聊天框使用映射命令（默认 `/reload`、`/list`、`/op`、`/kick`、`/ban`、`/banip`、`/unban`），执行结果私信返回；非管理员使用提示「权限不足」
-  OPAuth: requires Auth; the server console command `opSXMY nickname` grants admin (stored in `opusers.txt`); admins can use the mapped chat commands (default `/reload`, `/list`, `/op`, `/kick`, `/ban`, `/banip`, `/unban`) with private-message results; non-admins get "Permission denied"
+- **管理员账号（OPAuth）**：需启用 Auth；服务器控制台 `opSXMY 昵称` 设置管理员；管理员可在聊天框使用映射命令（默认 `/reload`、`/list`、`/op`、`/kick`、`/ban`、`/banip`、`/unban`），执行结果私信返回；非管理员使用提示「权限不足」
 - **玩家封禁（PlayerBan）**：需启用 Auth；`banSXMY 昵称 时长 理由` 封禁登录权限、`banipSXMY 昵称 时长 理由` 封禁其当前 IP；被封禁者在注册/登录时被踢出（含剩余时间与原因），注册账号不保存；记录存于 `banusers.txt`
-  PlayerBan: requires Auth; `banSXMY nickname duration reason` bans the login permission, `banipSXMY nickname duration reason` bans the current IP; banned players are kicked on register/login (with remaining time + reason) and their registration is not saved; records stored in `banusers.txt`
 - **聊天昵称（NameTag）**：未启用 Auth 时玩家用 `/n 名字` 设置聊天昵称，消息带 `[昵称]` 前缀；启用 Auth 时自动使用登录账号昵称
 - **车辆标签（VehicleTag）**：玩家登录或设置 `/n` 昵称后，其所有车辆上方（含玩家自己的车）显示昵称标签，并隐藏 BeamMP 官方标签；需要随服务器下发的 `SXMY-client.zip` 客户端 mod
 - **中英日志切换**：`[General] language` 可设置 `zh` 或 `en`，插件控制台日志只输出所选语言
-- **玩家踢出（PlayerKick）**：服务器控制台 `kickSXMY 昵称 理由` 按 Auth 登录昵称踢出（与 `banSXMY` 同样的查找方式）；管理员可映射 `/kick 昵称 理由`（默认映射），结果私信返回
-  PlayerKick: the server console command `kickSXMY nickname reason` kicks an online player by their Auth login nickname (same lookup as `banSXMY`); admins can use the mapped `/kick nickname reason` (default mapping) with private-message results
+- **玩家踢出（PlayerKick）**：服务器控制台 `kickSXMY 昵称 理由` 按 Auth 登录昵称踢出；管理员可映射 `/kick 昵称 理由`（默认映射），结果私信返回
 - **服务器信息日志（loginfo）**：启动时输出服务器启动时间、服务器版本、服务器地图，每项可单独开关
 - **投票踢出（Votekick）**：需启用 Auth；玩家聊天框输入 `/votekick 昵称`（兼容 `/votokick`）发起投票，`/vote t` 赞同、`/vote f` 反对；同意数/发起时登录人数 ≥ 配置百分比时自动调用 PlayerKick 踢出并广播结果；支持发起冷却与投票超时
-  Votekick: requires Auth; players start a vote with `/votekick nickname` (also `/votokick`), `/vote t` agrees and `/vote f` disagrees; when agree / logged-in-at-start ≥ the configured percentage, PlayerKick kicks the player and the result is broadcast; initiator cooldown and vote timeout supported
+- **数据库存储（Database）**：需启用 Auth；将 `users.txt` / `opusers.txt` / `banusers.txt` 同步到数据库（成功才删除本地文件），之后 Auth / OPAuth / PlayerBan 直接读写数据库，不再写本地文件；数据库客户端由插件自带（`database/dbclient.py`，也可用任意语言按协议自研）
 
 ## 目录结构
 
@@ -31,6 +28,11 @@ Resources/Server/BeamMP-SXMY_Plugin/
 ├── config.toml          # 配置文件：语言与各功能开关
 ├── README.md            # 中文说明（本文件）
 ├── README.en.md         # 英文说明
+├── database/            # 数据库客户端目录（自研，见「数据库客户端协议」）
+│   ├── dbclient.py      # 自带 MySQL 客户端（纯 Python 标准库）
+│   ├── dbclient.bat     # Windows 跨平台兜底包装
+│   ├── win/dbclient.bat # Windows 包装（调用 python）
+│   └── linux/dbclient   # Linux 包装（调用 python3）
 └── modules/             # 功能模块目录（子文件夹，不会被自动加载，由 main.lua require 加载）
     ├── lib.lua          # 共享配置解析库（配置解析、语言切换、模块发现）
     ├── Auth.lua         # 身份认证功能（注册/登录/拦截）
@@ -38,6 +40,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── PlayerBan.lua    # 玩家封禁功能（需启用 Auth）
     ├── PlayerKick.lua   # 玩家踢出功能（需启用 Auth）
     ├── Votekick.lua     # 投票踢出功能（需启用 Auth）
+    ├── database.lua     # 数据库同步功能（需启用 Auth）
     ├── NameTag.lua      # 聊天昵称功能
     ├── VehicleTag.lua   # 车辆标签功能（需客户端 mod）
     ├── WelcomeMsg.lua   # 进服信息功能
@@ -54,7 +57,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 
 ```
 [时间] [LUA] [SXMY_Plugin] 插件加载完成
-[时间] [LUA] [SXMY_Plugin] 已加载8/8个功能
+[时间] [LUA] [SXMY_Plugin] 已加载10/10个功能
 [时间] [LUA] [SXMY_Plugin] 已加载的功能：
 [时间] [LUA] [SXMY_Plugin] 1. Auth
 [时间] [LUA] [SXMY_Plugin] 2. loginfo
@@ -62,8 +65,10 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [时间] [LUA] [SXMY_Plugin] 4. OPAuth
 [时间] [LUA] [SXMY_Plugin] 5. PlayerKick
 [时间] [LUA] [SXMY_Plugin] 6. PlayerBan
-[时间] [LUA] [SXMY_Plugin] 7. VehicleTag
-[时间] [LUA] [SXMY_Plugin] 8. WelcomeMsg
+[时间] [LUA] [SXMY_Plugin] 7. Votekick
+[时间] [LUA] [SXMY_Plugin] 8. database
+[时间] [LUA] [SXMY_Plugin] 9. VehicleTag
+[时间] [LUA] [SXMY_Plugin] 10. WelcomeMsg
 [时间] [LUA] [SXMY_Loginfo] 服务器启动时间: 2026.08.18-14.30.00
 [时间] [LUA] [SXMY_Loginfo] 服务器版本: 3.9.3
 [时间] [LUA] [SXMY_Loginfo] 服务器地图: gridmap
@@ -84,51 +89,61 @@ Resources/Server/BeamMP-SXMY_Plugin/
 
 ```toml
 [General]
-language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文） / Plugin log language ("zh" Chinese, "en" English)
+language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文）
+
+[DATABASE]
+enable = false       # 数据库同步功能开关（需启用 Auth，默认关）
+dbaddr = "127.0.0.1:3306"  # 数据库地址（域名:端口）
+dbname = ""          # 数据库名称
+dbuser = ""          # 数据库用户名
+dbpwd = ""           # 数据库密码（注意会出现在客户端进程参数中）
+users = true         # 同步 users（账户）到数据库并删除本地 users.txt
+opusers = true       # 同步 opusers（管理员）到数据库并删除本地 opusers.txt
+banusers = true      # 同步 banusers（封禁）到数据库并删除本地 banusers.txt
 
 [Auth]
-enable = true          # 身份认证功能开关 / Auth module switch
-passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
-passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
-passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
-maxRegsPerIP = 3       # 单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)
-pbkdf2Iter = 1000      # PBKDF2 慢哈希迭代次数（越大越安全但登录越慢）/ PBKDF2 slow-hash iterations (higher = safer but slower logins)
-nickLength = 15        # 昵称最大字符数（注册限制与 listSXMY 表格列宽）/ Max nickname length (registration limit and listSXMY column width)
-LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
+enable = true          # 身份认证功能开关
+passwdlen = 8          # 密码最小长度（位）
+passwdcase = false     # 是否要求大小写混合（不要求也可使用）
+passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）
+maxRegsPerIP = 3       # 单个IP最多注册账户数（0 不限制）
+pbkdf2Iter = 1000      # PBKDF2 慢哈希迭代次数（越大越安全但登录越慢）
+nickLength = 15        # 昵称最大字符数（注册限制与 listSXMY 表格列宽）
+LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送
 
 [loginfo]
-enable = true          # 服务器信息日志功能开关 / Server info log module switch
-startTime = true       # 显示服务器启动时间 / Show server start time
-serverVersion = true   # 显示服务器版本 / Show server version
-serverMap = true       # 显示服务器地图（读取 ServerConfig.toml）/ Show server map (read from ServerConfig.toml)
+enable = true          # 服务器信息日志功能开关
+startTime = true       # 显示服务器启动时间
+serverVersion = true   # 显示服务器版本
+serverMap = true       # 显示服务器地图（读取 ServerConfig.toml）
 
 [NameTag]
-enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
+enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）
 
 [OPAuth]
-enable = false                  # 管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)
-command = ["reload-reloadSXMY", "list-listSXMY", "op-opSXMY", "kick-kickSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+enable = false                  # 管理员账号功能开关（需启用 Auth）
+command = ["reload-reloadSXMY", "list-listSXMY", "op-opSXMY", "ban-banSXMY", "banip-banipSXMY", "unban-unbanSXMY", "kick-kickSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令
 
 [PlayerKick]
-enable = true  # 玩家踢出功能开关（kickSXMY 命令）/ Player kick module switch (kickSXMY command)
+enable = true  # 玩家踢出功能开关（kickSXMY 命令）
 
 [PlayerBan]
-enable = true      # 玩家封禁功能开关（需启用 Auth）/ Player ban module switch (requires Auth)
+enable = true      # 玩家封禁功能开关（需启用 Auth）
 
 [Votekick]
-enable = true  # 投票踢出功能开关（需启用 Auth）/ Votekick module switch (requires Auth)
-timeout = 60  # 投票超时时间（秒）/ Vote timeout (seconds)
-cooldown = 120  # 发起投票后的冷却时间（秒）/ Cooldown after starting a vote (seconds)
-percentage = 60  # 票数百分比（同意数/登录人数 >= 此值则踢出）/ Vote percentage (agree / logged-in >= this value kicks the player)
+enable = true  # 投票踢出功能开关（需启用 Auth）
+timeout = 60  # 投票超时时间（秒）
+cooldown = 120  # 发起投票后的冷却时间（秒）
+percentage = 60  # 票数百分比（同意数/登录人数 >= 此值则踢出）
 
 [VehicleTag]
-enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMY-client mod）/ Vehicle tag module switch (requires the SXMY-client client mod)
+enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMY-client mod）
 
 [WelcomeMsg]
-enable = true      # 进服信息功能开关 / Welcome message module switch
-delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
-showtest = true    # 启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)
-text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
+enable = true      # 进服信息功能开关
+delay = 12         # 发送延迟（秒），等待玩家同步完成
+showtest = true    # 启动时显示欢迎文本测试（在插件与 loginfo 输出后）
+text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言，\n 换行分多条发送
 ```
 
 | 配置项 | 说明 |
@@ -156,10 +171,76 @@ text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言�
 | `[WelcomeMsg].delay` | 发送延迟（秒），等待玩家同步完成，默认 12 |
 | `[WelcomeMsg].showtest` | 启动时显示欢迎文本测试（在插件与 loginfo 输出后） |
 | `[WelcomeMsg].text` | 进服信息文本，支持所有语言，`\n` 换行分多条发送 |
+| `[DATABASE].enable` | 数据库同步功能开关（需同时启用 Auth，默认关）|
+| `[DATABASE].dbaddr` | 数据库地址（域名:端口），默认 `127.0.0.1:3306` |
+| `[DATABASE].dbname` | 数据库名称 |
+| `[DATABASE].dbuser` / `[DATABASE].dbpwd` | 数据库用户名 / 密码 |
+| `[DATABASE].users` / `[DATABASE].opusers` / `[DATABASE].banusers` | 是否同步对应本地文件到数据库（默认开）|
 | `[loginfo].enable` | 启用/禁用 loginfo 功能 |
 | `[loginfo].startTime` | 显示服务器启动时间 |
 | `[loginfo].serverVersion` | 显示服务器版本 |
 | `[loginfo].serverMap` | 显示服务器地图（从 `ServerConfig.toml` 获取） |
+
+## 数据库客户端协议
+
+`[DATABASE]` 开启后，`modules/database.lua` 会调用 `database/` 目录下的客户端可执行文件完成同步与读写。**客户端可完全自研**（任意语言），只需遵循下面的协议；插件自带 `database/dbclient.py`（纯 Python 标准库实现的 MySQL 客户端，无需安装任何依赖，服务器需有 `python`）。
+
+### 目录与探测
+
+客户端按以下顺序探测，找到第一个可用的即使用：
+
+```
+database/win/dbclient.exe|.bat|.cmd      # Windows
+database/windows/dbclient.exe            # Windows
+database/osx/dbclient                    # macOS
+database/linux/dbclient                  # Linux
+database/dbclient(.bat|.cmd|.sh)         # 跨平台兜底
+```
+
+### 命令协议
+
+每次调用（每次操作都重新连接）：
+
+```
+<客户端> --host <主机> --port <端口> --db <库名> --user <用户> --pass <密码> <命令> [参数...]
+```
+
+| 命令 | 说明 |
+|---|---|
+| `init` | 初始化：确保三张表存在（可含建表语句），成功无输出 |
+| `load <表>` | 读取全表，每行输出 `键 = 值`（`键` 与 `值` 之间是 ` = `）|
+| `set <表> <键> <值>` | 写入/更新一行（键存在则覆盖）|
+| `del <表> <键>` | 删除一行 |
+
+### 表与值格式
+
+`sxmy_auth` 每个账户一行、字段分列（`nick` 主键、`hash`、`ip`，无 IP 则 `ip` 为空）；`sxmy_opusers` / `sxmy_banusers` 为 key-value 两列（`bk` 主键、`bv` 值），值的内容与本地文件格式一致。客户端 `load` 输出统一为 `键 = 值` 行：
+
+| 表名 | 存储 | `load` 输出示例 |
+|---|---|---|
+| `sxmy_auth` | `nick` / `hash` / `ip` 三列，每行一个账户 | `Tangzixy = pbkdf2$盐$次数$哈希 注册IP` |
+| `sxmy_opusers` | `bk` = 昵称 / `bv` = `1` | `Tangzixy = 1` |
+| `sxmy_banusers` | `bk` = `nick:昵称` 或 `ip:IP` / `bv` = `YYYYMMDDHHMM:原因` | `nick:evil = 202812310000:cheating` |
+
+（旧版 `bk`/`bv` 结构的 `sxmy_auth` 表会在 `init` 时自动迁移为 `nick`/`hash`/`ip`，数据保留）
+
+### 输出与错误约定
+
+- 成功：`init`/`set`/`del` 输出 `OK`（Lua 侧以「非空且非 ERROR」判定，空输出视为客户端异常、按失败处理）；`load` 输出 `键 = 值` 行
+- 失败：stdout 输出一行以 `ERROR:` 开头的文本（如 `ERROR: MySQL error 1045: ...`），退出码非 0
+- `database.lua` 判定：输出以 `ERROR:` 或 `ERROR ` 开头即失败（`ERRORxxx` 昵称数据行不会被误判）；**同步时任一 `set` 失败则保留本地文件**（不删除）
+
+### 键值安全字符
+
+- 键（昵称/IP/前缀键）仅允许字母、数字、下划线、点、冒号、连字符
+- 值（如封禁原因）**不允许**含 `" & | < > ^ % ( )`（这些字符可被 Windows cmd 解析为命令注入，含有的写入会被拒绝、保留本地文件）
+
+### 安全提示
+
+- 数据库密码会出现在客户端进程的命令行参数中（进程列表可见），请限制服务器本机访问
+- `config.toml` 含数据库凭据明文：请勿提交到公开仓库、限制文件权限（仅服务器运行账户可读），并建议为插件创建权限受限的专用数据库账户（仅所需表的 `SELECT/INSERT/UPDATE/DELETE`）
+- 客户端自行负责 SQL 注入防护（自带 `dbclient.py` 已对键/值做转义）
+- 键/值的安全字符限制见上文（值不得含 `" & | < > ^ % ( )`，含有的写入会被拒绝并保留本地文件）
 
 ## 开发功能模块
 

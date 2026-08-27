@@ -1,4 +1,4 @@
-# BeamMP-SXMY_Plugin
+# BeamMP-SXMY_Plugin v1.0.0
 
 A modular server plugin for the SXMY server: `main.lua` main loader + auto-discovered modules + Chinese/English log switching. Built for **BeamMP-Server v3.x** (Lua 5.3).
 
@@ -10,14 +10,15 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 - **Auto-discovered modules**: the module list is scanned from the `modules/` folder, no code changes needed to add features; each module generates its own config section (enabled by default when no config key exists).
 - **Welcome message (WelcomeMsg)**: sends the configured welcome text to a player on join via private message, supports any language, `\n` splits into multiple messages.
 - **Auth**: `/reg` register, `/login` log in, `/logout` log out, PBKDF2 slow-hash password storage; unauthenticated players cannot chat or spawn vehicles; logged-in players cannot re-register/log in again (must `/logout` first); password rules configurable.
-- **PlayerBan**: requires Auth; `banSXMY nickname duration reason` bans the login permission, `banipSXMY nickname duration reason` bans the current IP; banned players are kicked on register/login (with remaining time + reason) and their registration is not saved; records stored in `banusers.txt`.
-- **OPAuth**: requires Auth; the server console command `opSXMY nickname` grants admin (stored in `opusers.txt`); admins can use the mapped chat commands (default `/reload`, `/list`, `/op`, `/kick`, `/ban`, `/banip`, `/unban`) with private-message results; non-admins get "Permission denied".
-- **PlayerKick**: the server console command `kickSXMY nickname reason` kicks an online player by their Auth login nickname (same lookup as `banSXMY`); admins can use the mapped `/kick nickname reason` (default mapping) with private-message results.
-- **NameTag**: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically.
-- **VehicleTag**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMY-client` client mod.
+- **Admin accounts (OPAuth)**: requires Auth; the server console command `opSXMY nickname` grants admin; admins can use the mapped chat commands (default `/reload`, `/list`, `/op`, `/kick`, `/ban`, `/banip`, `/unban`) with private-message results; non-admins get "Permission denied".
+- **Player bans (PlayerBan)**: requires Auth; `banSXMY nickname duration reason` bans the login permission, `banipSXMY nickname duration reason` bans the current IP; banned players are kicked on register/login (with remaining time + reason) and their registration is not saved; records stored in `banusers.txt`.
+- **Chat nicknames (NameTag)**: without Auth, players set a chat nickname with `/n name` and messages get a `[nickname]` prefix; with Auth, the logged-in account nickname is used automatically.
+- **Vehicle tags (VehicleTag)**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMY-client` client mod.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
+- **Player kick (PlayerKick)**: the server console command `kickSXMY nickname reason` kicks an online player by their Auth login nickname; admins can use the mapped `/kick nickname reason` (default mapping) with private-message results.
 - **Server info log (loginfo)**: outputs server start time, server version and server map on startup, each line can be toggled separately.
 - **Votekick**: requires Auth; players start a vote with `/votekick nickname` (also `/votokick`), `/vote t` agrees and `/vote f` disagrees; when agree / logged-in-at-start ≥ the configured percentage, PlayerKick kicks the player and the result is broadcast; initiator cooldown and vote timeout supported.
+- **Database storage (Database)**: requires Auth; syncs `users.txt` / `opusers.txt` / `banusers.txt` to the database (local files are removed only on success) and then Auth / OPAuth / PlayerBan read/write the database directly; the database client is bundled (`database/dbclient.py`) and the protocol is open for any language.
 
 ## Directory Structure
 
@@ -27,6 +28,11 @@ Resources/Server/BeamMP-SXMY_Plugin/
 ├── config.toml          # Config file: language and feature switches
 ├── README.md            # Chinese README
 ├── README.en.md         # English README (this file)
+├── database/            # Database client directory (self-made, see "Database Client Protocol")
+│   ├── dbclient.py      # Bundled MySQL client (pure Python stdlib)
+│   ├── dbclient.bat     # Windows root wrapper
+│   ├── win/dbclient.bat # Windows wrapper (calls python)
+│   └── linux/dbclient   # Linux wrapper (calls python3)
 └── modules/             # Module directory (subfolder, not auto-loaded; loaded via require in main.lua)
     ├── lib.lua          # Shared config library (parsing, language, discovery)
     ├── Auth.lua         # Auth feature (register/login/blocking)
@@ -34,6 +40,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── PlayerBan.lua    # Player ban feature (requires Auth)
     ├── PlayerKick.lua   # Player kick feature (requires Auth)
     ├── Votekick.lua     # Votekick feature (requires Auth)
+    ├── database.lua     # Database sync feature (requires Auth)
     ├── NameTag.lua      # Chat nickname feature
     ├── VehicleTag.lua   # Vehicle tag feature (requires the client mod)
     ├── WelcomeMsg.lua   # Welcome message feature
@@ -50,7 +57,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
 
 ```
 [time] [LUA] [SXMY_Plugin] Plugin loaded
-[time] [LUA] [SXMY_Plugin] Loaded 8/8 features
+[time] [LUA] [SXMY_Plugin] Loaded 10/10 features
 [time] [LUA] [SXMY_Plugin] Loaded features:
 [time] [LUA] [SXMY_Plugin] 1. Auth
 [time] [LUA] [SXMY_Plugin] 2. loginfo
@@ -58,8 +65,10 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [time] [LUA] [SXMY_Plugin] 4. OPAuth
 [time] [LUA] [SXMY_Plugin] 5. PlayerKick
 [time] [LUA] [SXMY_Plugin] 6. PlayerBan
-[time] [LUA] [SXMY_Plugin] 7. VehicleTag
-[time] [LUA] [SXMY_Plugin] 8. WelcomeMsg
+[time] [LUA] [SXMY_Plugin] 7. Votekick
+[time] [LUA] [SXMY_Plugin] 8. database
+[time] [LUA] [SXMY_Plugin] 9. VehicleTag
+[time] [LUA] [SXMY_Plugin] 10. WelcomeMsg
 [time] [LUA] [SXMY_Loginfo] Server start time: 2026.08.18-14.30.00
 [time] [LUA] [SXMY_Loginfo] Server version: 3.9.3
 [time] [LUA] [SXMY_Loginfo] Server map: gridmap
@@ -80,52 +89,64 @@ The config file is at `Resources/Server/BeamMP-SXMY_Plugin/config.toml`; a **ser
 
 ```toml
 [General]
-language = "zh"    # 插件日志语言（"zh" 中文，"en" 英文） / Plugin log language ("zh" Chinese, "en" English)
+language = "zh"    # Plugin log language ("zh" Chinese, "en" English)
+
+[DATABASE]
+enable = false       # Database sync module switch (requires Auth, off by default)
+dbaddr = "127.0.0.1:3306"  # Database address (host:port)
+dbname = ""          # Database name
+dbuser = ""          # Database user
+dbpwd = ""           # Database password (note: it appears in the client process arguments)
+users = true         # Sync users (accounts) to the database and remove users.txt
+opusers = true       # Sync opusers (admins) to the database and remove opusers.txt
+banusers = true      # Sync banusers (bans) to the database and remove banusers.txt
 
 [Auth]
-enable = true          # 身份认证功能开关 / Auth module switch
-passwdlen = 8          # 密码最小长度（位）/ Minimum password length (characters)
-passwdcase = false     # 是否要求大小写混合（不要求也可使用）/ Require mixed case (optional)
-passwdsymbol = false   # 是否要求特殊符号（不要求也可使用）/ Require special characters (optional)
-maxRegsPerIP = 3       # 单个IP最多注册账户数（0 不限制）/ Max registrations per IP (0 = unlimited)
-pbkdf2Iter = 1000      # PBKDF2 慢哈希迭代次数（越大越安全但登录越慢）/ PBKDF2 slow-hash iterations (higher = safer but slower logins)
-nickLength = 15        # 昵称最大字符数（注册限制与 listSXMY 表格列宽）/ Max nickname length (registration limit and listSXMY column width)
-LoginMsg = "欢迎 <name> 登录服务器"  # 登录成功广播消息（/say），<name> 为玩家昵称，留空则不发送 / Login broadcast message, <name> = nickname, empty = disabled
+enable = true          # Auth module switch
+passwdlen = 8          # Minimum password length (characters)
+passwdcase = false     # Require mixed case (optional)
+passwdsymbol = false   # Require special characters (optional)
+maxRegsPerIP = 3       # Max registrations per IP (0 = unlimited)
+pbkdf2Iter = 1000      # PBKDF2 slow-hash iterations (higher = safer but slower logins)
+nickLength = 15        # Max nickname length (registration limit and listSXMY column width)
+LoginMsg = "欢迎 <name> 登录服务器"  # Login broadcast message (/say), <name> = nickname, empty = disabled
 
 [loginfo]
-enable = true          # 服务器信息日志功能开关 / Server info log module switch
-startTime = true       # 显示服务器启动时间 / Show server start time
-serverVersion = true   # 显示服务器版本 / Show server version
-serverMap = true       # 显示服务器地图（读取 ServerConfig.toml）/ Show server map (read from ServerConfig.toml)
+enable = true          # Server info log module switch
+startTime = true       # Show server start time
+serverVersion = true   # Show server version
+serverMap = true       # Show server map (read from ServerConfig.toml)
 
 [NameTag]
-enable = true      # 聊天昵称功能开关（Auth 启用时自动使用登录昵称）/ Chat nickname module switch (uses the login nickname when Auth is enabled)
+enable = true      # Chat nickname module switch (uses the login nickname when Auth is enabled)
 
 [OPAuth]
-enable = false                  # 管理员账号功能开关（需启用 Auth）/ Admin (OP) module switch (requires Auth)
-command = ["reload-reloadSXMY", "list-listSXMY", "op-opSXMY", "ban-banSXMY", "banip-banipSXMY", "unban-unbanSXMY", "kick-kickSXMY"]  # 管理员聊天命令-服务端命令映射：玩家命令(带/)-服务端命令 / OP chat command -> server command mapping: playerCommand(with /)-serverCommand
+enable = false                  # Admin (OP) module switch (requires Auth)
+command = ["reload-reloadSXMY", "list-listSXMY", "op-opSXMY", "ban-banSXMY", "banip-banipSXMY", "unban-unbanSXMY", "kick-kickSXMY"]  # OP chat command -> server command mapping: playerCommand(with /)-serverCommand
 
 [PlayerKick]
-enable = true  # 玩家踢出功能开关（kickSXMY 命令）/ Player kick module switch (kickSXMY command)
+enable = true  # Player kick module switch (kickSXMY command)
 
 [PlayerBan]
-enable = true      # 玩家封禁功能开关（需启用 Auth）/ Player ban module switch (requires Auth)
+enable = true      # Player ban module switch (requires Auth)
 
 [Votekick]
-enable = true  # 投票踢出功能开关（需启用 Auth）/ Votekick module switch (requires Auth)
-timeout = 60  # 投票超时时间（秒）/ Vote timeout (seconds)
-cooldown = 120  # 发起投票后的冷却时间（秒）/ Cooldown after starting a vote (seconds)
-percentage = 60  # 票数百分比（同意数/登录人数 >= 此值则踢出）/ Vote percentage (agree / logged-in >= this value kicks the player)
+enable = true  # Votekick module switch (requires Auth)
+timeout = 60  # Vote timeout (seconds)
+cooldown = 120  # Cooldown after starting a vote (seconds)
+percentage = 60  # Vote percentage (agree / logged-in >= this value kicks the player)
 
 [VehicleTag]
-enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMY-client mod）/ Vehicle tag module switch (requires the SXMY-client client mod)
+enable = true      # Vehicle tag module switch (requires the SXMY-client client mod)
 
 [WelcomeMsg]
-enable = true      # 进服信息功能开关 / Welcome message module switch
-delay = 12         # 发送延迟（秒），等待玩家同步完成 / Send delay (seconds), waits for the player to sync
-showtest = true    # 启动时显示欢迎文本测试（在插件与 loginfo 输出后）/ Show welcome text test on startup (after plugin and loginfo output)
-text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言，\n 换行分多条发送 / Welcome text, any language, \n splits into multiple messages
+enable = true      # Welcome message module switch
+delay = 12         # Send delay (seconds), waits for the player to sync
+showtest = true    # Show welcome text test on startup (after plugin and loginfo output)
+text = "Welcome to SXMY \nEnjoy :D"  # Welcome text, any language, \n splits into multiple messages
 ```
+
+(The real `config.toml` is generated with bilingual zh/en comments; only the comment language differs from this English example — the keys and values are identical.)
 
 | Key | Description |
 |---|---|
@@ -152,10 +173,76 @@ text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言�
 | `[WelcomeMsg].delay` | Send delay in seconds, waits for the player to sync, default 12 |
 | `[WelcomeMsg].showtest` | Show the welcome text test on startup (after plugin and loginfo output) |
 | `[WelcomeMsg].text` | Welcome text, any language, `\n` splits into multiple messages |
+| `[DATABASE].enable` | Database sync switch (requires Auth, off by default) |
+| `[DATABASE].dbaddr` | Database address (host:port), default `127.0.0.1:3306` |
+| `[DATABASE].dbname` | Database name |
+| `[DATABASE].dbuser` / `[DATABASE].dbpwd` | Database user / password |
+| `[DATABASE].users` / `[DATABASE].opusers` / `[DATABASE].banusers` | Sync the matching local file to the database (default on) |
 | `[loginfo].enable` | Enable/disable the loginfo feature |
 | `[loginfo].startTime` | Show the server start time |
 | `[loginfo].serverVersion` | Show the server version |
 | `[loginfo].serverMap` | Show the server map (read from `ServerConfig.toml`) |
+
+## Database Client Protocol
+
+When `[DATABASE]` is enabled, `modules/database.lua` invokes the client executable in the `database/` folder for syncing and read/write. **The client is fully self-made** (any language) as long as it follows the protocol below; the plugin bundles `database/dbclient.py` (a pure-Python-stdlib MySQL client with no dependencies; the server needs `python`).
+
+### Location and probing
+
+The client is probed in this order and the first one found is used:
+
+```
+database/win/dbclient.exe|.bat|.cmd      # Windows
+database/windows/dbclient.exe            # Windows
+database/osx/dbclient                    # macOS
+database/linux/dbclient                  # Linux
+database/dbclient(.bat|.cmd|.sh)         # cross-platform fallback
+```
+
+### Command protocol
+
+Each invocation (reconnects every time):
+
+```
+<client> --host <host> --port <port> --db <dbname> --user <user> --pass <password> <command> [args...]
+```
+
+| Command | Description |
+|---|---|
+| `init` | Initialize: make sure the three tables exist (may contain DDL); no output on success |
+| `load <table>` | Read the whole table, print one `key = value` line per row (separated by ` = `) |
+| `set <table> <key> <value>` | Upsert a row (overwrite when the key exists) |
+| `del <table> <key>` | Delete a row |
+
+### Tables and value format
+
+`sxmy_auth` stores one account per row with separate columns (`nick` PK, `hash`, `ip`; `ip` is empty when absent); `sxmy_opusers` / `sxmy_banusers` are key-value tables (`bk` PK, `bv` value) whose value matches the local file format. The client `load` always prints `key = value` lines:
+
+| Table | Storage | `load` output example |
+|---|---|---|
+| `sxmy_auth` | `nick` / `hash` / `ip` columns, one account per row | `Tangzixy = pbkdf2$salt$iter$hash regIP` |
+| `sxmy_opusers` | `bk` = nickname / `bv` = `1` | `Tangzixy = 1` |
+| `sxmy_banusers` | `bk` = `nick:nickname` or `ip:IP` / `bv` = `YYYYMMDDHHMM:reason` | `nick:evil = 202812310000:cheating` |
+
+(A legacy `sxmy_auth` with the `bk`/`bv` structure is migrated automatically to `nick`/`hash`/`ip` by `init`, keeping the data.)
+
+### Output and error conventions
+
+- Success: `init`/`set`/`del` print `OK` (the Lua side treats "non-empty and not ERROR" as success; an empty output means a client failure and is treated as a failure); `load` prints `key = value` lines
+- Failure: print one line starting with `ERROR:` on stdout (e.g. `ERROR: MySQL error 1045: ...`), exit code non-zero
+- `database.lua` treats output starting with `ERROR:` or `ERROR ` as failure (a nickname row like `ERRORxxx = ...` is not misjudged); **a failed `set` during sync keeps the local file** (it is not removed)
+
+### Key/value safe characters
+
+- Keys (nicknames/IPs/prefixed keys) allow only letters, digits, underscore, dot, colon and hyphen
+- Values (e.g. ban reasons) must **not** contain `" & | < > ^ % ( )` (these can be parsed by Windows cmd as command injection; writes containing them are rejected and the local file is kept)
+
+### Security notes
+
+- The database password appears in the client process command line (visible in the process list); restrict local access to the server
+- `config.toml` holds the database credentials in plain text: do not commit it to a public repository, restrict its file permissions (readable only by the server account), and use a dedicated low-privilege database account for the plugin (only `SELECT/INSERT/UPDATE/DELETE` on the needed tables)
+- The client is responsible for SQL-injection protection (the bundled `dbclient.py` escapes keys/values)
+- The key/value safe-character limits above apply (values must not contain `" & | < > ^ % ( )`; writes containing them are rejected and the local file is kept)
 
 ## Writing Feature Modules
 
@@ -170,6 +257,8 @@ enable = true
 (Both `enable` and `enabled` keys are supported)
 
 3. Restart the server; `main.lua` auto-discovers and loads the module, and lists it in the startup summary.
+
+Inside a module, use `lib = require("modules.lib")` for config access (`lib.getConfig()`, `lib.enabled(section)`, `lib.get(section, key, default)`, `lib.msg(zhText, enText)`). To run logic after the main summary, register the `onInit` event. Prefix event handlers with `SXMY_ModuleName_EventName` to avoid collisions.
 
 ## Auth Commands
 
@@ -222,8 +311,6 @@ Type in the in-game chat:
 - Passwords stored as **PBKDF2-HMAC-SHA256 slow hashes** (`pbkdf2$salt$iter$hash`); the iteration count is set via `[Auth].pbkdf2Iter` (default 1000 — higher is much harder to crack but logins get slower). Legacy salted/unsalted SHA-256 accounts are **transparently upgraded** to the slow hash after their first successful login.
 - Built-in brute-force protection: lockout after 5 consecutive failed logins (60 seconds), tracked by player IP when available, not bypassable by reconnecting with a new server ID.
 - Nicknames are limited to letters, digits and underscores to keep the accounts file format safe.
-
-Inside a module, use `lib = require("modules.lib")` for config access (`lib.getConfig()`, `lib.enabled(section)`, `lib.get(section, key, default)`, `lib.msg(zhText, enText)`). To run logic after the main summary, register the `onInit` event. Prefix event handlers with `SXMY_ModuleName_EventName` to avoid collisions.
 
 ## FAQ
 

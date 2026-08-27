@@ -22,6 +22,17 @@ local opSet = {} -- nickname -> true / 昵称 -> 是否管理员
 
 -- Load the op list from the file / 从文件加载管理员列表
 local function loadOps()
+    -- 数据库模式：直接从 opusers 表读取 / DB mode: read the opusers table directly
+    if type(SXMY_Database_IsEnabled) == "function" and SXMY_Database_IsEnabled("opusers") then
+        local rows = SXMY_Database_Load("opusers")
+        opSet = {}
+        if rows then
+            for nick in pairs(rows) do
+                opSet[nick] = true
+            end
+        end
+        return
+    end
     local fh, err = io.open(OP_FILE, "r")
     if not fh then
         return
@@ -60,7 +71,13 @@ local function setOp(nick, byNick)
     if type(SXMY_Auth_AccountExists) ~= "function" or not SXMY_Auth_AccountExists(nick) then
         return lib.msg("该昵称未注册 无法设置为管理员", "That nickname is not registered, cannot be set as OP")
     end
-    local ok, err = appendOp(nick)
+    local ok, err
+    if type(SXMY_Database_IsEnabled) == "function" and SXMY_Database_IsEnabled("opusers") then
+        -- 数据库模式：直接写入 opusers 表（不写本地文件）/ DB mode: write straight to the opusers table
+        ok = SXMY_Database_Set("opusers", nick, "1")
+    else
+        ok, err = appendOp(nick)
+    end
     if not ok then
         return lib.msg("管理员写入失败", "Failed to write the op file") .. ": " .. tostring(err)
     end

@@ -197,6 +197,7 @@ end
 -- ==================== end PBKDF2 / PBKDF2 结束 ====================
 
 local accounts = {} -- nickname -> password hash, loaded from file / 昵称 -> 密码哈希（从文件加载）
+local accountsLoaded = false -- whether the accounts were loaded from a ready source / 账户是否已从可用来源加载
 local players = {} -- player_id -> { nick, loggedIn, joinedAt, lastPrompt } / 玩家状态表
 local loginFails = {} -- player_id -> { count, lockedUntil, lastTry } for brute-force protection / 登录失败记录（防暴力破解，断线保留防重连绕过）
 
@@ -205,8 +206,27 @@ local loginFails = {} -- player_id -> { count, lockedUntil, lastTry } for brute-
 local function loadAccounts()
     accounts = {}
     ipRegCount = {}
+    -- 数据库模式：直接从 users 表读取 / DB mode: read the users table directly
+    if type(SXMY_Database_IsEnabled) == "function" and SXMY_Database_IsEnabled("users") then
+        local rows = SXMY_Database_Load("users")
+        if rows then
+            for nick, value in pairs(rows) do
+                -- Value format: "hash [ip]" (matches the local file) / 值格式 "hash [ip]"（与本地文件一致）
+                local hash, ip = value:match("^(%S+)%s*(%S*)$")
+                accounts[nick] = hash
+                if ip and ip ~= "" then
+                    ipRegCount[ip] = (ipRegCount[ip] or 0) + 1
+                end
+            end
+        end
+        accountsLoaded = true -- 数据库已就绪并加载（即使表为空也算完成）/ the database is ready and loaded (even an empty table counts as done)
+        return
+    end
     local fh, err = io.open(ACCOUNTS_FILE, "r")
     if not fh then
+        -- 数据库未就绪且本地文件也不存在：标记未加载，首次登录/注册时重试（database 模块可能晚于本模块加载）/
+        -- database not ready and no local file: mark as not loaded, retried on the first login/register (database may load after this module)
+        accountsLoaded = false
         print("[SXMY_Auth] " .. lib.msg("账户文件读取失败", "Failed to read accounts file") .. " (" .. tostring(err) .. ")")
         return
     end
@@ -222,10 +242,32 @@ local function loadAccounts()
         end
     end
     fh:close()
+    accountsLoaded = true
+end
+
+-- 确保账户已加载：登录/注册前调用；启动时 database 模块可能尚未加载（config 节顺序），此时首次使用重试 /
+-- ensure the accounts are loaded before login/register; the database module may load after this one (config order), so retry on first use
+local function ensureAccountsLoaded()
+    if not accountsLoaded then
+        loadAccounts()
+    end
 end
 
 -- Append a new account to the file, recording the registration IP / 向文件追加新账户（记录注册 IP）
 local function saveAccount(nick, hash, ip)
+    -- 数据库模式：直接写入 users 表（不写本地文件，保留注册 IP；写入失败则返回 false，不置内存账户）/ DB mode: write straight to the users table (no local file, keep the registration IP; return false on failure and do not cache the account)
+    if type(SXMY_Database_IsEnabled) == "function" and SXMY_Database_IsEnabled("users") then
+        local ok = SXMY_Database_Set("users", nick, hash .. (ip and ip ~= "" and " " .. ip or ""))
+        if not ok then
+            print("[SXMY_Auth] " .. lib.msg("账户写入数据库失败", "Failed to write the account to the database"))
+            return false
+        end
+        accounts[nick] = hash
+        if ip and ip ~= "" then
+            ipRegCount[ip] = (ipRegCount[ip] or 0) + 1
+        end
+        return true
+    end
     local fh, err = io.open(ACCOUNTS_FILE, "a")
     if not fh then
         print("[SXMY_Auth] " .. lib.msg("账户文件写入失败", "Failed to write accounts file") .. " (" .. tostring(err) .. ")")
@@ -243,6 +285,16 @@ end
 -- Rewrite the account file after a legacy account logs in (transparent PBKDF2 upgrade) / 旧账户登录成功后重写账户文件（透明升级为 PBKDF2）
 local function upgradeAccount(nick, passwd, salt)
     local newHash = pbkdf2Hash(passwd, salt)
+    -- 数据库模式：直接覆盖 users 表的 hash（写入失败则保留内存旧值，下次登录再升级）/ DB mode: overwrite the hash in the users table (on failure keep the old in-memory value, retry on the next login)
+    if type(SXMY_Database_IsEnabled) == "function" and SXMY_Database_IsEnabled("users") then
+        local ok = SXMY_Database_Set("users", nick, newHash)
+        if not ok then
+            print("[SXMY_Auth] " .. lib.msg("账户升级写入数据库失败", "Failed to write the account upgrade to the database"))
+            return
+        end
+        accounts[nick] = newHash
+        return
+    end
     local lines = {}
     local fh, ferr = io.open(ACCOUNTS_FILE, "r")
     if fh then
@@ -437,6 +489,7 @@ end
 
 -- Handle the /reg command / 处理 /reg 命令
 local function handleRegister(player_id, args)
+    ensureAccountsLoaded() -- 数据库可能晚于本模块加载，首次使用时重试 / the database may load after this module, retry on first use
     -- Already-logged-in players must /logout first before registering again / 已登录玩家需先 /logout 才能重新注册
     local st0 = players[player_id]
     if st0 and st0.loggedIn then
@@ -511,6 +564,7 @@ end
 
 -- Handle the /login command with brute-force protection / 处理 /login 命令（含防暴力破解）
 local function handleLogin(player_id, args)
+    ensureAccountsLoaded() -- 数据库可能晚于本模块加载，首次使用时重试 / the database may load after this module, retry on first use
     -- Already-logged-in players must /logout first before logging in again / 已登录玩家需先 /logout 才能重新登录
     local st0 = players[player_id]
     if st0 and st0.loggedIn then

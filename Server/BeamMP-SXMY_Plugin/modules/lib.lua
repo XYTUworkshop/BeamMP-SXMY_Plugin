@@ -22,9 +22,28 @@ local function parseConfig(path)
         return cfg
     end
     local section = nil -- current section name / 当前节名
+    -- 去除行尾注释与首尾空白，但保留引号内的 #（例如密码 "abc#def" 中的 #）/
+    -- strip trailing comments and whitespace, but keep a # inside quotes (e.g. the # in a password "abc#def")
+    local function stripComment(line)
+        local inQuote = false
+        local i = 1
+        while i <= #line do
+            local c = line:sub(i, i)
+            if c == "\\" then
+                i = i + 2 -- 跳过转义字符及其后一个字符（如 \" 不切换引号状态）/ skip an escape and the next character (a \" does not toggle the quote state)
+            elseif c == '"' then
+                inQuote = not inQuote
+                i = i + 1
+            elseif c == "#" and not inQuote then
+                return line:sub(1, i - 1)
+            else
+                i = i + 1
+            end
+        end
+        return line
+    end
     for line in fh:lines() do
-        -- Strip trailing comments and surrounding whitespace / 去除行尾注释与首尾空白
-        local trimmed = line:gsub("%s*#.*$", ""):gsub("^%s+", ""):gsub("%s+$", "")
+        local trimmed = stripComment(line):gsub("^%s+", ""):gsub("%s+$", "")
         if trimmed ~= "" then
             local s = trimmed:match("^%[([^%]]+)%]$")
             if s then

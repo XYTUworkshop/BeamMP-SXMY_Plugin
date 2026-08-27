@@ -39,6 +39,25 @@ end
 -- 读取封禁记录（替换中途崩溃时尝试从备份恢复）/ load the ban records (recover from the backup after a crash mid-swap)
 local function loadBans()
     bans = {}
+    -- 数据库模式：直接从 banusers 表读取（值格式：YYYYMMDDHHMM:原因）/ DB mode: read the banusers table directly (value format: YYYYMMDDHHMM:reason)
+    if type(SXMY_Database_IsEnabled) == "function" and SXMY_Database_IsEnabled("banusers") then
+        local rows = SXMY_Database_Load("banusers")
+        if rows then
+            for key, value in pairs(rows) do
+                local expiresStr, reason = value:match("^(%d+):(.*)$")
+                if expiresStr then
+                    local ts = parseTime(expiresStr) -- 可读格式 / the readable format
+                    if not ts then
+                        ts = tonumber(expiresStr) -- 兼容早期 epoch 格式 / legacy epoch format
+                    end
+                    if ts then
+                        bans[key] = { expires = ts, reason = reason }
+                    end
+                end
+            end
+        end
+        return
+    end
     local fh = io.open(BAN_FILE, "r")
     if not fh then
         -- 主文件缺失但存在备份（替换中途崩溃）：恢复并告警 / main file missing but a backup exists (crash mid-swap): recover and warn
@@ -75,6 +94,19 @@ local function loadBans()
         end
     end
     fh:close()
+end
+
+-- 数据库模式下增量写一条（set/del），文件模式下全量保存 / incremental single-row write in DB mode, full file save otherwise
+local function persistBan(key, ban, remove)
+    if type(SXMY_Database_IsEnabled) == "function" and SXMY_Database_IsEnabled("banusers") then
+        if remove then
+            return SXMY_Database_Del("banusers", key)
+        end
+        -- 与本地文件同格式：YYYYMMDDHHMM:原因 / same format as the local file: YYYYMMDDHHMM:reason
+        return SXMY_Database_Set("banusers", key, formatTime(ban.expires) .. ":" .. (ban.reason or ""))
+    end
+    saveBans()
+    return true
 end
 
 -- 原子写封禁记录（Windows 兼容：rename 不能覆盖已存在文件，用 备份-替换-回滚；写失败不替换，删备份前校验行数）
@@ -228,7 +260,7 @@ end
 -- 新增/更新一条封禁（保存后立即踢出在线目标）/ add or update a ban record (kicks online targets right after saving)
 local function doBan(target, untilTs, reason, kind)
     bans[kind .. ":" .. target] = { expires = untilTs, reason = reason or "" }
-    saveBans()
+    persistBan(kind .. ":" .. target, bans[kind .. ":" .. target])
     kickOnline(target, kind, bans[kind .. ":" .. target])
     return lib.msg("已封禁 " .. target .. " 剩余时间：", "Banned " .. target .. ", remaining: ") .. formatRemaining(untilTs) ..
         (reason and reason ~= "" and (lib.msg(" 原因：", ", reason: ") .. reason) or "")
@@ -280,7 +312,7 @@ function SXMY_PlayerBan_onConsoleInput(cmd)
     if nick then
         if bans["nick:" .. nick] then
             bans["nick:" .. nick] = nil
-            saveBans()
+            persistBan("nick:" .. nick, nil, true)
             return lib.msg("已解除 " .. nick .. " 的封禁", "Unbanned " .. nick)
         end
         return lib.msg("该昵称未被封禁", "Nickname is not banned")
@@ -293,7 +325,7 @@ function SXMY_PlayerBan_onConsoleInput(cmd)
         end
         if bans["ip:" .. ip] then
             bans["ip:" .. ip] = nil
-            saveBans()
+            persistBan("ip:" .. ip, nil, true)
             return lib.msg("已解除 IP " .. ip .. " 的封禁", "Unbanned IP " .. ip)
         end
         return lib.msg("该 IP 未被封禁", "IP is not banned")
@@ -322,7 +354,7 @@ function SXMY_PlayerBan_Check(player_id, nick, ip)
             return true
         end
         bans["nick:" .. nick] = nil -- 过期清理 / expired, clean up
-        saveBans()
+        persistBan("nick:" .. nick, nil, true)
     end
     -- IP 封禁（该 IP 的任何账号）/ IP ban (any account on this IP)
     if ip and ip ~= "" then
@@ -333,7 +365,7 @@ function SXMY_PlayerBan_Check(player_id, nick, ip)
                 return true
             end
             bans["ip:" .. ip] = nil
-            saveBans()
+            persistBan("ip:" .. ip, nil, true)
         end
     end
     return false

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Linux wrapper for dbclient.py / Linux 包装脚本：运行同目录的 dbclient.py
+# Called by modules/database.lua with: --host H --port P --db D --user U --pass W <cmd> [args]
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec python3 "$DIR/../dbclient.py" "$@"
