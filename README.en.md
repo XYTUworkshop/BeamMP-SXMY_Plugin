@@ -17,6 +17,7 @@ A modular server plugin for the SXMY server: `main.lua` main loader + auto-disco
 - **VehicleTag**: after login or setting a `/n` nickname, the nickname tag is drawn above all of the player's vehicles (including their own cars) and the BeamMP official tags are hidden; requires the `SXMY-client` client mod.
 - **Chinese/English log switching**: set `[General] language` to `zh` or `en`, the plugin console logs output only the selected language.
 - **Server info log (loginfo)**: outputs server start time, server version and server map on startup, each line can be toggled separately.
+- **Votekick**: requires Auth; players start a vote with `/votekick nickname` (also `/votokick`), `/vote t` agrees and `/vote f` disagrees; when agree / logged-in-at-start ≥ the configured percentage, PlayerKick kicks the player and the result is broadcast; initiator cooldown and vote timeout supported.
 
 ## Directory Structure
 
@@ -31,7 +32,8 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── Auth.lua         # Auth feature (register/login/blocking)
     ├── OPAuth.lua       # Admin (OP) feature (requires Auth)
     ├── PlayerBan.lua    # Player ban feature (requires Auth)
-    ├── PlayerKick.lua   # Player kick feature
+    ├── PlayerKick.lua   # Player kick feature (requires Auth)
+    ├── Votekick.lua     # Votekick feature (requires Auth)
     ├── NameTag.lua      # Chat nickname feature
     ├── VehicleTag.lua   # Vehicle tag feature (requires the client mod)
     ├── WelcomeMsg.lua   # Welcome message feature
@@ -48,10 +50,16 @@ Resources/Server/BeamMP-SXMY_Plugin/
 
 ```
 [time] [LUA] [SXMY_Plugin] Plugin loaded
-[time] [LUA] [SXMY_Plugin] Loaded 2/2 features
+[time] [LUA] [SXMY_Plugin] Loaded 8/8 features
 [time] [LUA] [SXMY_Plugin] Loaded features:
-[time] [LUA] [SXMY_Plugin] 1. WelcomeMsg
+[time] [LUA] [SXMY_Plugin] 1. Auth
 [time] [LUA] [SXMY_Plugin] 2. loginfo
+[time] [LUA] [SXMY_Plugin] 3. NameTag
+[time] [LUA] [SXMY_Plugin] 4. OPAuth
+[time] [LUA] [SXMY_Plugin] 5. PlayerKick
+[time] [LUA] [SXMY_Plugin] 6. PlayerBan
+[time] [LUA] [SXMY_Plugin] 7. VehicleTag
+[time] [LUA] [SXMY_Plugin] 8. WelcomeMsg
 [time] [LUA] [SXMY_Loginfo] Server start time: 2026.08.18-14.30.00
 [time] [LUA] [SXMY_Loginfo] Server version: 3.9.3
 [time] [LUA] [SXMY_Loginfo] Server map: gridmap
@@ -59,6 +67,8 @@ Resources/Server/BeamMP-SXMY_Plugin/
 [time] [LUA] [SXMY_WelcomeMsg] Welcome to SXMY
 [time] [LUA] [SXMY_WelcomeMsg] Enjoy :D
 ```
+
+(Example only; the actual module load order may differ slightly)
 
 (`Loaded X/Y features`: X = enabled and loaded modules, Y = total module files in `modules/`; the `showtest` startup test text prints only once)
 
@@ -101,6 +111,12 @@ enable = true  # 玩家踢出功能开关（kickSXMY 命令）/ Player kick modu
 [PlayerBan]
 enable = true      # 玩家封禁功能开关（需启用 Auth）/ Player ban module switch (requires Auth)
 
+[Votekick]
+enable = true  # 投票踢出功能开关（需启用 Auth）/ Votekick module switch (requires Auth)
+timeout = 60  # 投票超时时间（秒）/ Vote timeout (seconds)
+cooldown = 120  # 发起投票后的冷却时间（秒）/ Cooldown after starting a vote (seconds)
+percentage = 60  # 票数百分比（同意数/登录人数 >= 此值则踢出）/ Vote percentage (agree / logged-in >= this value kicks the player)
+
 [VehicleTag]
 enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMY-client mod）/ Vehicle tag module switch (requires the SXMY-client client mod)
 
@@ -126,6 +142,10 @@ text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言�
 | `[OPAuth].command` | Admin chat-command to server-command mapping array: `["playerCommand-serverCommand", ...]`, player commands use `/`; default `["reload-reloadSXMY", "list-listSXMY", "op-opSXMY", "ban-banSXMY", "banip-banipSXMY", "unban-unbanSXMY", "kick-kickSXMY"]`, freely add/remove entries |
 | `[PlayerKick].enable` | Player kick module switch (the `kickSXMY` command, requires Auth) |
 | `[PlayerBan].enable` | Player ban module switch (requires Auth) |
+| `[Votekick].enable` | Votekick module switch (requires Auth) |
+| `[Votekick].timeout` | Vote timeout (seconds), default 60 |
+| `[Votekick].cooldown` | Cooldown after starting a vote (seconds), default 120 |
+| `[Votekick].percentage` | Vote percentage (agree / logged-in ≥ this value kicks), default 60 |
 | `[NameTag].enable` | Enable/disable the chat nickname feature |
 | `[VehicleTag].enable` | Enable/disable the vehicle tag feature (requires `Resources/Client/SXMY-client.zip`) |
 | `[WelcomeMsg].enable` | Enable/disable the welcome message feature |
@@ -161,6 +181,9 @@ Type in the in-game chat:
 | `/login nickname password` | Log in (`/logout` first if already logged in) |
 | `/logout` | Log out (clears the login state, despawns all vehicles and clears the vehicle-tag nickname) |
 | `/n nickname` | Set the chat nickname (only when Auth is disabled) |
+| `/votekick nickname` | Start a vote to kick the player (also `/votokick`; must be logged in, target must be logged in and online; private hints on cooldown/ongoing vote) |
+| `/vote t` | Agree with the current vote (one vote per account, no repeats); the current status is broadcast after each vote: `xxx voted. Current votes X/Y, agree rate Z%` |
+| `/vote f` | Disagree with the current vote (not counted as agree) |
 | `/op nickname` | OP command: grant admin to a registered nickname (maps to `opSXMY`, **default mapping**) |
 | `/ban nickname duration reason` | OP command: ban the login permission of a nickname (maps to `banSXMY`, **default mapping**) |
 | `/banip nickname duration reason` | OP command: ban the current IP of a nickname (maps to `banipSXMY`, **default mapping**) |
@@ -176,6 +199,7 @@ Type in the in-game chat:
 - **Mapping to official server commands (e.g. `exit`) is not supported**: there is no API to inject server console input, and hard-killing the process is not graceful.
 - **New server commands need no OPAuth changes**: a module exposes a global `SXMY_ModuleName_onConsoleInput(command)` function (returning non-nil when handled), then just add a `"playerCommand-serverCommand"` entry to `[OPAuth].command` (e.g. `SXMY_Example_onConsoleInput` handles `exampleSXMY`, mapped as `"ex-exampleSXMY"`).
 
+- Votekick: fast re-initiation within the cooldown shows "You are starting votes too quickly"; an ongoing vote blocks new ones ("A vote is already in progress"); a passed vote kicks by Auth nickname and broadcasts "nickname has been vote-kicked"; a timeout broadcasts "The vote has timed out"; the denominator is the number of logged-in players **when the vote started**, and **both the cooldown and the votes are keyed by the Auth nickname (account)**: one vote per account, reconnecting with a new pid cannot vote twice or bypass the cooldown, and different accounts behind the same IP stay independent.
 - Unauthenticated players: chat hidden from others, **cannot spawn vehicles** (including editing/replacing); prompted to register/log in every 5 seconds; locked for 60 seconds after 5 failed logins.
 - Logged in: messages starting with `/` are hidden from others (commands are not broadcast).
 - Accounts stored in `users.txt`, passwords as PBKDF2 slow hashes.

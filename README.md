@@ -20,6 +20,8 @@ BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础�
 - **玩家踢出（PlayerKick）**：服务器控制台 `kickSXMY 昵称 理由` 按 Auth 登录昵称踢出（与 `banSXMY` 同样的查找方式）；管理员可映射 `/kick 昵称 理由`（默认映射），结果私信返回
   PlayerKick: the server console command `kickSXMY nickname reason` kicks an online player by their Auth login nickname (same lookup as `banSXMY`); admins can use the mapped `/kick nickname reason` (default mapping) with private-message results
 - **服务器信息日志（loginfo）**：启动时输出服务器启动时间、服务器版本、服务器地图，每项可单独开关
+- **投票踢出（Votekick）**：需启用 Auth；玩家聊天框输入 `/votekick 昵称`（兼容 `/votokick`）发起投票，`/vote t` 赞同、`/vote f` 反对；同意数/发起时登录人数 ≥ 配置百分比时自动调用 PlayerKick 踢出并广播结果；支持发起冷却与投票超时
+  Votekick: requires Auth; players start a vote with `/votekick nickname` (also `/votokick`), `/vote t` agrees and `/vote f` disagrees; when agree / logged-in-at-start ≥ the configured percentage, PlayerKick kicks the player and the result is broadcast; initiator cooldown and vote timeout supported
 
 ## 目录结构
 
@@ -35,6 +37,7 @@ Resources/Server/BeamMP-SXMY_Plugin/
     ├── OPAuth.lua       # 管理员账号功能（需启用 Auth）
     ├── PlayerBan.lua    # 玩家封禁功能（需启用 Auth）
     ├── PlayerKick.lua   # 玩家踢出功能（需启用 Auth）
+    ├── Votekick.lua     # 投票踢出功能（需启用 Auth）
     ├── NameTag.lua      # 聊天昵称功能
     ├── VehicleTag.lua   # 车辆标签功能（需客户端 mod）
     ├── WelcomeMsg.lua   # 进服信息功能
@@ -112,6 +115,12 @@ enable = true  # 玩家踢出功能开关（kickSXMY 命令）/ Player kick modu
 [PlayerBan]
 enable = true      # 玩家封禁功能开关（需启用 Auth）/ Player ban module switch (requires Auth)
 
+[Votekick]
+enable = true  # 投票踢出功能开关（需启用 Auth）/ Votekick module switch (requires Auth)
+timeout = 60  # 投票超时时间（秒）/ Vote timeout (seconds)
+cooldown = 120  # 发起投票后的冷却时间（秒）/ Cooldown after starting a vote (seconds)
+percentage = 60  # 票数百分比（同意数/登录人数 >= 此值则踢出）/ Vote percentage (agree / logged-in >= this value kicks the player)
+
 [VehicleTag]
 enable = true      # 车辆标签功能开关（需 Resources/Client 的 SXMY-client mod）/ Vehicle tag module switch (requires the SXMY-client client mod)
 
@@ -137,6 +146,10 @@ text = "Welcome to SXMY \nEnjoy :D"  # 进服信息文本，支持所有语言�
 | `[OPAuth].command` | 管理员聊天命令-服务端命令映射数组：`["玩家命令-服务端命令", ...]`，玩家命令带 `/`；默认 `["reload-reloadSXMY", "list-listSXMY", "op-opSXMY", "ban-banSXMY", "banip-banipSXMY", "unban-unbanSXMY", "kick-kickSXMY"]`，可自行增删 |
 | `[PlayerKick].enable` | 玩家踢出功能开关（`kickSXMY` 命令，需启用 Auth）|
 | `[PlayerBan].enable` | 玩家封禁功能开关（需启用 Auth）|
+| `[Votekick].enable` | 投票踢出功能开关（需启用 Auth）|
+| `[Votekick].timeout` | 投票超时时间（秒），默认 60 |
+| `[Votekick].cooldown` | 发起投票后的冷却时间（秒），默认 120 |
+| `[Votekick].percentage` | 票数百分比（同意数/登录人数 ≥ 此值则踢出），默认 60 |
 | `[NameTag].enable` | 启用/禁用聊天昵称功能 |
 | `[VehicleTag].enable` | 启用/禁用车辆标签功能（需 `Resources/Client/SXMY-client.zip`） |
 | `[WelcomeMsg].enable` | 启用/禁用进服信息功能 |
@@ -174,6 +187,9 @@ enable = true
 | `/login 昵称 密码` | 登录（已登录时需先 `/logout`）|
 | `/logout` | 退出登录（清除登录状态、删除全部车辆与车辆标签昵称）|
 | `/n 昵称` | 设置聊天昵称（仅未启用 Auth 时） |
+| `/votekick 昵称` | 发起投票踢出该玩家（兼容 `/votokick`；需已登录，目标需已登录在线；冷却/已有投票时私信提示）|
+| `/vote t` | 赞同当前投票（每账号一票，不可重复）；投票后广播当前状态：`xxx已投票 当前投票人数X/Y 同意率Z%` |
+| `/vote f` | 反对当前投票（不计入同意数）|
 | `/op 昵称` | 管理员命令：将已注册昵称设为管理员（映射 `opSXMY`，**默认映射**）|
 | `/ban 昵称 时长 理由` | 管理员命令：封禁昵称登录权限（映射 `banSXMY`，**默认映射**）|
 | `/banip 昵称 时长 理由` | 管理员命令：封禁昵称当前 IP（映射 `banipSXMY`，**默认映射**）|
@@ -190,6 +206,7 @@ enable = true
 - **不支持映射官方服务端命令**（如 `exit`）：插件无法注入服务器控制台命令，外部强杀进程不优雅
 - **新增服务端命令无需修改 OPAuth**：模块提供全局 `SXMY_模块名_onConsoleInput(命令)` 函数（处理时返回非 nil），并在 `[OPAuth].command` 中添加 `"玩家命令-服务端命令"` 映射即可（示例：`SXMY_Example_onConsoleInput` 处理 `exampleSXMY`，映射 `"ex-exampleSXMY"`）
 
+- 投票踢出：发起人冷却期内再发起提示「你的投票发起速度太快了」；已有进行中的投票提示「目前已有投票」；投票通过时自动按 Auth 昵称踢出并广播「xxx 已被投票踢出」；超时广播「投票已超时」；同意人数按**发起时已登录玩家数**为分母计算，**冷却与投票均按 Auth 昵称（账号）**：每账号一票，同一账号换 pid 重连无法重复投票或绕过冷却，同 IP 的不同账号各自独立
 - 未登录玩家：聊天消息他人不可见，**不可刷载具**（含编辑/替换车辆）；每 5 秒私信提示注册/登录；登录失败 5 次锁定 60 秒
 - 已登录玩家：`/` 开头的消息他人不可见（命令不广播）
 - 账户保存于插件根目录 `users.txt`，密码为 PBKDF2 慢哈希
