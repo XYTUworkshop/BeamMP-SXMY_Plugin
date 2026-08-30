@@ -2,6 +2,17 @@
   "meta": {
     "commandWidth": 4
   },
+  "main": {
+    "starting": "插件加载中...",
+    "loaded": "插件加载完毕",
+    "featureEnabled": "[SXMY] 功能 {1} 已启用",
+    "featureDisabled": "[SXMY] 功能 {1} 未启用",
+    "moduleLoadFailed": "[SXMY] 模块加载失败 {1}: {2}",
+    "reportFailed": "[SXMY] 功能 {1} 启动报告失败: {2}"
+  },
+  "welcome": {
+    "reportDelay": "[SXMY] 延迟 {1}s 进服文本: \"{2}\""
+  },
   "help": {
     "linePrefix": "[SXMY]",
     "header": "[SXMY]命令{1}用法",
@@ -11,22 +22,30 @@
   "config": {
     "generated": "已生成默认配置文件: {1}",
     "cannotCreate": "无法创建配置文件: {1}",
-    "defaultTemplate": "# SXMY_Plugin 配置文件\n# 修改后需重启服务器生效（热重载后续版本支持）\n\n[general]\n# 服务器全局语言：zh / en\nLanguage = \"zh\"",
+    "parseFailed": "配置解析失败，使用默认值",
+    "defaultTemplate": "# SXMY_Plugin 配置文件\n# 修改后需重启服务器生效\n\n[general]\n# 服务器全局语言：zh / en\nLanguage = \"zh\"\n\n[WelcomeMsg]\n# 插件开关\nenable = true\n# 进服后延迟多少秒向玩家发送欢迎信息\ndelay = 5\n# 向玩家私信发送的欢迎信息文本，<\\n> 可换行（实际为分多句发送）\ntext = \"Welcome to SXMY server<\\n>Enjoy\"",
     "usage": "[SXMY] 用法：SXMY Config <配置项> <配置值> <是否重载(可选 默认重载)>",
     "usageItems": "[SXMY] <配置项> {1}",
     "usageValueHint": "[SXMY] <配置值> 使用SXMY Config <配置项> 查询可用配置",
     "usageReload": "[SXMY] <是否热重载> y/n",
     "usageItem": "[SXMY] 用法：SXMY Config {1} <x> <y(热重载)/n(不重载)>",
     "usageItemValues": "[SXMY] <x> {1}",
+    "usageWmEnable": "[SXMY] 用法：SXMY Config WelcomeMsg-enable <true(启用)/false(禁用)> <y(热重载)/n(不重载)>",
+    "usageWmDelay": "[SXMY] 用法：SXMY Config WelcomeMsg-delay <x> <y(热重载)/n(不重载)>\n[SXMY] <x> ≥0 的数字",
+    "wmDelayValue": "≥0 的数字",
+    "usageWmText": "[SXMY] 用法：SXMY Config WelcomeMsg-text \"<text>\" <y(热重载)/n(不重载)>\n[SXMY] <text> 任意文本（必须用引号包裹）",
+    "quotedRequired": "[SXMY] 无效值：{1} 必须使用引号包裹，如 SXMY Config WelcomeMsg-text \"text\"",
     "invalidValue": "[SXMY] 无效的配置值：{1}，可用值：{2}",
-    "setOk": "[SXMY] 配置 {1} 已设置为 {2}"
+    "setOkReloaded": "[SXMY] 配置 {1} 已设置为 {2}（已热重载）",
+    "setOkNotReloaded": "[SXMY] 配置 {1} 已设置为 {2}（未热重载）"
   },
   "reload": {
     "usage": "[SXMY] 用法：SXMY Reload <功能名(可选 不填将重载所有功能)>",
     "usageFeatures": "[SXMY] <功能名> {1}",
     "done": "[SXMY] 重载完成",
     "doneFeature": "[SXMY] 功能 {1} 已重载",
-    "unknownFeature": "[SXMY] 未知功能：{1}"
+    "unknownFeature": "[SXMY] 未知功能：{1}",
+    "featureError": "[SXMY] 功能 {1} 重载失败: {2}"
   },
   "i18n": {
     "loadFailed": "语言文件读取失败: {1}",

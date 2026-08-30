@@ -2,6 +2,17 @@
   "meta": {
     "commandWidth": 7
   },
+  "main": {
+    "starting": "Loading plugin...",
+    "loaded": "Plugin loaded",
+    "featureEnabled": "[SXMY] Feature {1} enabled",
+    "featureDisabled": "[SXMY] Feature {1} disabled",
+    "moduleLoadFailed": "[SXMY] Failed to load module {1}: {2}",
+    "reportFailed": "[SXMY] Feature {1} startup report failed: {2}"
+  },
+  "welcome": {
+    "reportDelay": "[SXMY] Delay {1}s join text: \"{2}\""
+  },
   "help": {
     "linePrefix": "[SXMY] ",
     "header": "[SXMY] Command{1}Usage",
@@ -11,22 +22,30 @@
   "config": {
     "generated": "Default config file generated: {1}",
     "cannotCreate": "Cannot create config file: {1}",
-    "defaultTemplate": "# SXMY_Plugin config file\n# Changes take effect after server restart (hot reload in later versions)\n\n[general]\n# Server-wide language: zh / en\nLanguage = \"zh\"",
+    "parseFailed": "Config parse failed, using defaults",
+    "defaultTemplate": "# SXMY_Plugin config file\n# Changes take effect after server restart\n\n[general]\n# Server-wide language: zh / en\nLanguage = \"zh\"\n\n[WelcomeMsg]\n# Plugin switch\nenable = true\n# Delay in seconds before sending the welcome message\ndelay = 5\n# Welcome message sent via private message, <\\n> for new line (sent as multiple messages)\ntext = \"Welcome to SXMY server<\\n>Enjoy\"",
     "usage": "[SXMY] Usage: SXMY Config <item> <value> <reload(optional, default reload)>",
     "usageItems": "[SXMY] <item> {1}",
     "usageValueHint": "[SXMY] <value> Use SXMY Config <item> to query available values",
     "usageReload": "[SXMY] <reload> y/n",
     "usageItem": "[SXMY] Usage: SXMY Config {1} <x> <y(reload)/n(no reload)>",
     "usageItemValues": "[SXMY] <x> {1}",
+    "usageWmEnable": "[SXMY] Usage: SXMY Config WelcomeMsg-enable <true(enable)/false(disable)> <y(reload)/n(no reload)>",
+    "usageWmDelay": "[SXMY] Usage: SXMY Config WelcomeMsg-delay <x> <y(reload)/n(no reload)>\n[SXMY] <x> number >= 0",
+    "wmDelayValue": "number >= 0",
+    "usageWmText": "[SXMY] Usage: SXMY Config WelcomeMsg-text \"<text>\" <y(reload)/n(no reload)>\n[SXMY] <text> any text (must be quoted)",
+    "quotedRequired": "[SXMY] Invalid value: {1} must be wrapped in quotes, e.g. SXMY Config WelcomeMsg-text \"text\"",
     "invalidValue": "[SXMY] Invalid value: {1}, available: {2}",
-    "setOk": "[SXMY] Config {1} set to {2}"
+    "setOkReloaded": "[SXMY] Config {1} set to {2} (reloaded)",
+    "setOkNotReloaded": "[SXMY] Config {1} set to {2} (not reloaded)"
   },
   "reload": {
     "usage": "[SXMY] Usage: SXMY Reload <feature(optional, empty reloads all)>",
     "usageFeatures": "[SXMY] <feature> {1}",
     "done": "[SXMY] Reload complete",
     "doneFeature": "[SXMY] Feature {1} reloaded",
-    "unknownFeature": "[SXMY] Unknown feature: {1}"
+    "unknownFeature": "[SXMY] Unknown feature: {1}",
+    "featureError": "[SXMY] Feature {1} reload failed: {2}"
   },
   "i18n": {
     "loadFailed": "Failed to read language file: {1}",
