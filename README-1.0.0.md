@@ -1,9 +1,3 @@
-# BeamMP-SXMY_Plugin v2.0.0 WIP
-
-## 许可证
-
-本项目使用 GPL-3.0 许可证，仅供学习参考使用，可自由修改与分发。
-
 # BeamMP-SXMY_Plugin v1.0.0
 
 BeamMP 服务器插件，为 SXMY 服务器提供模块化的插件开发基础：`main.lua` 主加载 + 自动发现模块 + 中英日志切换。基于 **BeamMP-Server v3.x**（Lua 5.3）开发。
