@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "commandWidth": 7
+  },
+  "help": {
+    "linePrefix": "[SXMY] ",
+    "header": "[SXMY] Command{1}Usage",
+    "descReload": "Hot reload plugin configurations",
+    "descConfig": "Switch configuration items and hot reload"
+  },
+  "config": {
+    "generated": "Default config file generated: {1}",
+    "cannotCreate": "Cannot create config file: {1}",
+    "defaultTemplate": "# SXMY_Plugin config file\n# Changes take effect after server restart (hot reload in later versions)\n\n[general]\n# Server-wide language: zh / en\nLanguage = \"zh\"",
+    "usage": "[SXMY] Usage: SXMY Config <item> <value> <reload(optional, default reload)>",
+    "usageItems": "[SXMY] <item> {1}",
+    "usageValueHint": "[SXMY] <value> Use SXMY Config <item> to query available values",
+    "usageReload": "[SXMY] <reload> y/n",
+    "usageItem": "[SXMY] Usage: SXMY Config {1} <x> <y(reload)/n(no reload)>",
+    "usageItemValues": "[SXMY] <x> {1}",
+    "invalidValue": "[SXMY] Invalid value: {1}, available: {2}",
+    "setOk": "[SXMY] Config {1} set to {2}"
+  },
+  "reload": {
+    "usage": "[SXMY] Usage: SXMY Reload <feature(optional, empty reloads all)>",
+    "usageFeatures": "[SXMY] <feature> {1}",
+    "done": "[SXMY] Reload complete",
+    "doneFeature": "[SXMY] Feature {1} reloaded",
+    "unknownFeature": "[SXMY] Unknown feature: {1}"
+  },
+  "i18n": {
+    "loadFailed": "Failed to read language file: {1}",
+    "parseFailed": "Failed to parse language file: {1}",
+    "noJsonDecoder": "JSON decoder unavailable"
+  }
+}
