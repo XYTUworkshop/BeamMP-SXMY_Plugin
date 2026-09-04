@@ -4,7 +4,15 @@ BeamMP 服务器插件，基于 Lua 开发。
 
 ## 当前版本
 
-**2.0.0.2609011529_Alpha**
+**2.0.0.2609050420_Alpha**
+
+## 环境要求
+
+- BeamMP-Server v3.1.0+（建议最新版）
+- **Python 3**（数据库/文件模式依赖）：插件通过 Python 脚本实现文件与数据库操作
+  - 下载：<https://www.python.org/downloads/>
+  - Windows 安装时勾选 "Add Python to PATH"；Linux 使用发行版自带 `python3` 即可
+  - 数据库模式（MySQL）：Linux 需 `mysql` 客户端（Debian/Ubuntu：`apt install mysql-client`）
 
 ## 目录结构
 

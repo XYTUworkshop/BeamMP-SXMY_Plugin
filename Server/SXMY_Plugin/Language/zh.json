@@ -26,7 +26,8 @@
     "statusConnected": "[SXMY] 数据库状态：已连接",
     "statusDisconnected": "[SXMY] 数据库状态：断开连接",
     "statusAddress": "[SXMY] 数据库地址：{1}",
-    "statusName": "[SXMY] 数据库名称：{1}"
+    "statusName": "[SXMY] 数据库名称：{1}",
+    "pythonRequired": "[SXMY] 提示：数据库/文件模式需要安装 Python（https://www.python.org/downloads/）"
   },
   "help": {
     "linePrefix": "[SXMY]",

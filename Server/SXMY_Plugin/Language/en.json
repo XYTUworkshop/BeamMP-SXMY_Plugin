@@ -26,7 +26,8 @@
     "statusConnected": "[SXMY] Database status: connected",
     "statusDisconnected": "[SXMY] Database status: disconnected",
     "statusAddress": "[SXMY] Database address: {1}",
-    "statusName": "[SXMY] Database name: {1}"
+    "statusName": "[SXMY] Database name: {1}",
+    "pythonRequired": "[SXMY] Notice: Python is required for database/file modes (https://www.python.org/downloads/)"
   },
   "help": {
     "linePrefix": "[SXMY] ",

@@ -10,7 +10,7 @@
 
 SXMY = SXMY or {}
 SXMY.PLUGIN_NAME = "SXMY_Plugin"
-SXMY.VERSION = "2.0.0.2609011529_Alpha"
+SXMY.VERSION = "2.0.0.2609050420_Alpha"
 SXMY.CONFIG_FILE = "Resources/Server/SXMY_Plugin/config.toml"
 SXMY.LANGUAGE_PATH = "Resources/Server/SXMY_Plugin/Language/"
 SXMY.LIB_PATH = "Resources/Server/SXMY_Plugin/lib/"

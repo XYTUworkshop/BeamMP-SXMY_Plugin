@@ -53,6 +53,17 @@ local function GetPythonCmd()
     return "python3"
 end
 
+-- Python 可用性检测（使用数据库/文件模式的前提）
+local function PythonAvailable()
+    if not (os and os.execute) then
+        return false
+    end
+    local py = GetPythonCmd()
+    local null = (py == "python3") and "/dev/null" or "nul"
+    local ok = os.execute(py .. " --version >" .. null .. " 2>" .. null)
+    return ok == true or ok == 0
+end
+
 -- 运行脚本：RunScript(script, {arg1, arg2, ...}) -> ok, output
 -- os.execute 执行，输出重定向到临时文件再读回（BeamMP 的 io.popen 会阻塞 Lua 状态）
 local OUT_FILE = "Resources/Server/SXMY_Plugin/DataBase/.files/.result"
@@ -279,6 +290,9 @@ SXMY.RegisterFeature("Database", {
     end,
     report = function()
         local cfg = GetCfg()
+        if not PythonAvailable() then
+            print(SXMY.T("database.pythonRequired"))
+        end
         if not cfg.enable then
             print(SXMY.T("database.disabled"))
             print(SXMY.T("database.fileModeUnused"))
