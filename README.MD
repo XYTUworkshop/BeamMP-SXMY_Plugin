@@ -4,7 +4,7 @@ BeamMP 服务器插件，基于 Lua 开发。
 
 ## 当前版本
 
-**2.0.0.2608310618_Alpha**
+**2.0.0.2609011529_Alpha**
 
 ## 目录结构
 
@@ -35,6 +35,14 @@ Language = "zh"          # zh / en，切换插件输出语言
 enable = true            # 插件开关：true 启用 / false 禁用
 delay = 5                # 玩家同步完成(now synced!)后延迟多少秒发送欢迎信息（≥0）
 text = "Welcome to SXMY server<\n>Enjoy"   # 欢迎文本，<\n> 为换行标记（实际为分多句发送）
+
+# 数据库（文件/数据库双模式）
+[DataBase]
+enable = false            # 模块开关：true 启用 / false 禁用
+address = "127.0.0.1:3306" # 数据库地址：域名/ipv4:端口
+BaseName = ""             # 数据库名
+BaseUser = ""             # 数据用户名（空则默认 root）
+Basepwd = ""              # 数据库密码
 ```
 
 ## 功能
@@ -63,6 +71,17 @@ text = "Welcome to SXMY server<\n>Enjoy"   # 欢迎文本，<\n> 为换行标记
 [SXMY]命令    用法
 [SXMY]Reload  用于热重载插件的各个配置
 [SXMY]Config  用于切换各项配置并热重载
+```
+
+### SXMY DB —— 查询数据库实时状态
+
+```
+> SXMY DB                # 查询数据库连接状态（实时检查）
+[SXMY] 数据库状态：未启用              # enable=false 时
+[SXMY] 数据库状态：已连接              # enable=true 且连接成功
+[SXMY] 数据库地址：127.0.0.1:3306
+[SXMY] 数据库名称：mydb
+[SXMY] 数据库状态：断开连接            # enable=true 但连接失败
 ```
 
 ### SXMY Reload —— 热重载功能

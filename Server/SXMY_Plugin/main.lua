@@ -10,7 +10,7 @@
 
 SXMY = SXMY or {}
 SXMY.PLUGIN_NAME = "SXMY_Plugin"
-SXMY.VERSION = "2.0.0.2608310618_Alpha"
+SXMY.VERSION = "2.0.0.2609011529_Alpha"
 SXMY.CONFIG_FILE = "Resources/Server/SXMY_Plugin/config.toml"
 SXMY.LANGUAGE_PATH = "Resources/Server/SXMY_Plugin/Language/"
 SXMY.LIB_PATH = "Resources/Server/SXMY_Plugin/lib/"
@@ -140,6 +140,13 @@ local DEFAULT_CONFIG = {
         enable = true,
         delay = 5,
         text = "Welcome to SXMY server<\\n>Enjoy",
+    },
+    DataBase = {
+        enable = false,
+        address = "127.0.0.1:3306",
+        BaseName = "",
+        BaseUser = "",
+        Basepwd = "",
     },
 }
 

@@ -13,17 +13,33 @@
   "welcome": {
     "reportDelay": "[SXMY] 延迟 {1}s 进服文本: \"{2}\""
   },
+  "database": {
+    "info": "[SXMY] 数据库: {1}  库名: {2}",
+    "enabled": "[SXMY] 数据库功能已启用",
+    "disabled": "[SXMY] 数据库功能未启用",
+    "connected": "[SXMY] 数据库已连接",
+    "connectFailed": "[SXMY] 数据库连接失败",
+    "fileModeUnused": "[SXMY] 使用文件模式",
+    "usingDb": "[SXMY] 使用数据库模式",
+    "usingFile": "[SXMY] 使用文件模式",
+    "statusDisabled": "[SXMY] 数据库状态：未启用",
+    "statusConnected": "[SXMY] 数据库状态：已连接",
+    "statusDisconnected": "[SXMY] 数据库状态：断开连接",
+    "statusAddress": "[SXMY] 数据库地址：{1}",
+    "statusName": "[SXMY] 数据库名称：{1}"
+  },
   "help": {
     "linePrefix": "[SXMY]",
     "header": "[SXMY]命令{1}用法",
     "descReload": "用于热重载插件的各个配置",
-    "descConfig": "用于切换各项配置并热重载"
+    "descConfig": "用于切换各项配置并热重载",
+    "descDb": "查询数据库状态"
   },
   "config": {
     "generated": "已生成默认配置文件: {1}",
     "cannotCreate": "无法创建配置文件: {1}",
     "parseFailed": "配置解析失败，使用默认值",
-    "defaultTemplate": "# SXMY_Plugin 配置文件\n# 修改后需重启服务器生效\n\n[general]\n# 服务器全局语言：zh / en\nLanguage = \"zh\"\n\n[WelcomeMsg]\n# 插件开关\nenable = true\n# 进服后延迟多少秒向玩家发送欢迎信息\ndelay = 5\n# 向玩家私信发送的欢迎信息文本，<\\n> 可换行（实际为分多句发送）\ntext = \"Welcome to SXMY server<\\n>Enjoy\"",
+    "defaultTemplate": "# SXMY_Plugin 配置文件\n# 修改后需重启服务器生效\n\n[general]\n# 服务器全局语言：zh / en\nLanguage = \"zh\"\n\n[WelcomeMsg]\n# 插件开关\nenable = true\n# 进服后延迟多少秒向玩家发送欢迎信息\ndelay = 5\n# 向玩家私信发送的欢迎信息文本，<\\n> 可换行（实际为分多句发送）\ntext = \"Welcome to SXMY server<\\n>Enjoy\"\n\n[DataBase]\n# 数据库模块开关\nenable = false\n# 数据库地址：域名/ipv4:端口\naddress = false\n# 数据库名\nBaseName = \"\"\n# 数据用户名\nBaseUser = \"\"\n# 数据库密码\nBasepwd = \"\"",
     "usage": "[SXMY] 用法：SXMY Config <配置项> <配置值> <是否重载(可选 默认重载)>",
     "usageItems": "[SXMY] <配置项> {1}",
     "usageValueHint": "[SXMY] <配置值> 使用SXMY Config <配置项> 查询可用配置",
@@ -34,6 +50,15 @@
     "usageWmDelay": "[SXMY] 用法：SXMY Config WelcomeMsg-delay <x> <y(热重载)/n(不重载)>\n[SXMY] <x> ≥0 的数字",
     "wmDelayValue": "≥0 的数字",
     "usageWmText": "[SXMY] 用法：SXMY Config WelcomeMsg-text \"<text>\" <y(热重载)/n(不重载)>\n[SXMY] <text> 任意文本（必须用引号包裹）",
+    "usageDbEnable": "[SXMY] 用法：SXMY Config DataBase-enable <true(启用)/false(禁用)> <y(热重载)/n(不重载)>",
+    "usageDbAddress": "[SXMY] 用法：SXMY Config DataBase-address \"<address>\" <y(热重载)/n(不重载)>\n[SXMY] <address> 域名/ipv4:端口",
+    "dbAddressValue": "域名/ipv4:端口",
+    "usageDbBaseName": "[SXMY] 用法：SXMY Config DataBase-BaseName \"<name>\" <y(热重载)/n(不重载)>\n[SXMY] <name> 数据库名",
+    "dbBaseNameValue": "数据库名",
+    "usageDbBaseUser": "[SXMY] 用法：SXMY Config DataBase-BaseUser \"<user>\" <y(热重载)/n(不重载)>\n[SXMY] <user> 数据用户名（空则默认 root）",
+    "dbBaseUserValue": "数据用户名（空则默认 root）",
+    "usageDbBasepwd": "[SXMY] 用法：SXMY Config DataBase-Basepwd \"<pwd>\" <y(热重载)/n(不重载)>\n[SXMY] <pwd> 数据库密码",
+    "dbBasepwdValue": "数据库密码",
     "quotedRequired": "[SXMY] 无效值：{1} 必须使用引号包裹，如 SXMY Config WelcomeMsg-text \"text\"",
     "invalidValue": "[SXMY] 无效的配置值：{1}，可用值：{2}",
     "setOkReloaded": "[SXMY] 配置 {1} 已设置为 {2}（已热重载）",

@@ -13,17 +13,33 @@
   "welcome": {
     "reportDelay": "[SXMY] Delay {1}s join text: \"{2}\""
   },
+  "database": {
+    "info": "[SXMY] Database: {1}  Name: {2}",
+    "enabled": "[SXMY] Database feature enabled",
+    "disabled": "[SXMY] Database feature disabled",
+    "connected": "[SXMY] Database connected",
+    "connectFailed": "[SXMY] Database connection failed",
+    "fileModeUnused": "[SXMY] Using file mode",
+    "usingDb": "[SXMY] Using database mode",
+    "usingFile": "[SXMY] Using file mode",
+    "statusDisabled": "[SXMY] Database status: disabled",
+    "statusConnected": "[SXMY] Database status: connected",
+    "statusDisconnected": "[SXMY] Database status: disconnected",
+    "statusAddress": "[SXMY] Database address: {1}",
+    "statusName": "[SXMY] Database name: {1}"
+  },
   "help": {
     "linePrefix": "[SXMY] ",
     "header": "[SXMY] Command{1}Usage",
     "descReload": "Hot reload plugin configurations",
-    "descConfig": "Switch configuration items and hot reload"
+    "descConfig": "Switch configuration items and hot reload",
+    "descDb": "Query database status"
   },
   "config": {
     "generated": "Default config file generated: {1}",
     "cannotCreate": "Cannot create config file: {1}",
     "parseFailed": "Config parse failed, using defaults",
-    "defaultTemplate": "# SXMY_Plugin config file\n# Changes take effect after server restart\n\n[general]\n# Server-wide language: zh / en\nLanguage = \"zh\"\n\n[WelcomeMsg]\n# Plugin switch\nenable = true\n# Delay in seconds before sending the welcome message\ndelay = 5\n# Welcome message sent via private message, <\\n> for new line (sent as multiple messages)\ntext = \"Welcome to SXMY server<\\n>Enjoy\"",
+    "defaultTemplate": "# SXMY_Plugin config file\n# Changes take effect after server restart\n\n[general]\n# Server-wide language: zh / en\nLanguage = \"zh\"\n\n[WelcomeMsg]\n# Plugin switch\nenable = true\n# Delay in seconds before sending the welcome message\ndelay = 5\n# Welcome message sent via private message, <\\n> for new line (sent as multiple messages)\ntext = \"Welcome to SXMY server<\\n>Enjoy\"\n\n[DataBase]\n# Database module switch\nenable = false\n# Database address: domain/ipv4:port\naddress = false\n# Database name\nBaseName = \"\"\n# Database user\nBaseUser = \"\"\n# Database password\nBasepwd = \"\"",
     "usage": "[SXMY] Usage: SXMY Config <item> <value> <reload(optional, default reload)>",
     "usageItems": "[SXMY] <item> {1}",
     "usageValueHint": "[SXMY] <value> Use SXMY Config <item> to query available values",
@@ -34,6 +50,15 @@
     "usageWmDelay": "[SXMY] Usage: SXMY Config WelcomeMsg-delay <x> <y(reload)/n(no reload)>\n[SXMY] <x> number >= 0",
     "wmDelayValue": "number >= 0",
     "usageWmText": "[SXMY] Usage: SXMY Config WelcomeMsg-text \"<text>\" <y(reload)/n(no reload)>\n[SXMY] <text> any text (must be quoted)",
+    "usageDbEnable": "[SXMY] Usage: SXMY Config DataBase-enable <true(enable)/false(disable)> <y(reload)/n(no reload)>",
+    "usageDbAddress": "[SXMY] Usage: SXMY Config DataBase-address \"<address>\" <y(reload)/n(no reload)>\n[SXMY] <address> domain/ipv4:port",
+    "dbAddressValue": "domain/ipv4:port",
+    "usageDbBaseName": "[SXMY] Usage: SXMY Config DataBase-BaseName \"<name>\" <y(reload)/n(no reload)>\n[SXMY] <name> database name",
+    "dbBaseNameValue": "database name",
+    "usageDbBaseUser": "[SXMY] Usage: SXMY Config DataBase-BaseUser \"<user>\" <y(reload)/n(no reload)>\n[SXMY] <user> database user (empty defaults to root)",
+    "dbBaseUserValue": "database user (empty defaults to root)",
+    "usageDbBasepwd": "[SXMY] Usage: SXMY Config DataBase-Basepwd \"<pwd>\" <y(reload)/n(no reload)>\n[SXMY] <pwd> database password",
+    "dbBasepwdValue": "database password",
     "quotedRequired": "[SXMY] Invalid value: {1} must be wrapped in quotes, e.g. SXMY Config WelcomeMsg-text \"text\"",
     "invalidValue": "[SXMY] Invalid value: {1}, available: {2}",
     "setOkReloaded": "[SXMY] Config {1} set to {2} (reloaded)",
